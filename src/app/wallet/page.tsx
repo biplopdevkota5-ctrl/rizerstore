@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAppContext } from "@/lib/context";
 import { db } from "@/lib/db";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Wallet, PlusCircle, ArrowUpCircle, History, Landmark, Upload, Image as ImageIcon } from "lucide-react";
+import { Wallet, PlusCircle, ArrowUpCircle, History, Landmark, Upload } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { FundRequest } from "@/lib/types";
@@ -23,8 +23,13 @@ export default function WalletPage() {
   const [proofImage, setProofImage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  useEffect(() => {
+    if (!currentUser) {
+      router.push('/auth?tab=login');
+    }
+  }, [currentUser, router]);
+
   if (!currentUser) {
-    if (typeof window !== 'undefined') router.push('/auth?tab=login');
     return null;
   }
 
@@ -80,15 +85,14 @@ export default function WalletPage() {
   ];
 
   return (
-    <div className="container mx-auto px-4 py-12 max-w-6xl">
+    <div className="container mx-auto px-4 py-8 md:py-12 max-w-6xl">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Sidebar - Balance Info */}
         <div className="space-y-8">
           <Card className="glass-card border-white/5 bg-primary/10 neon-glow overflow-hidden relative">
              <div className="absolute -top-10 -right-10 h-32 w-32 bg-primary blur-[60px] opacity-30" />
              <CardHeader>
                <CardDescription className="text-primary-foreground/70 uppercase tracking-widest text-xs font-bold">Total Balance</CardDescription>
-               <CardTitle className="text-4xl font-headline font-bold">Rs. {currentUser.balance.toLocaleString()}</CardTitle>
+               <CardTitle className="text-3xl md:text-4xl font-headline font-bold">Rs. {currentUser.balance.toLocaleString()}</CardTitle>
              </CardHeader>
              <CardContent>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -117,7 +121,6 @@ export default function WalletPage() {
           </Card>
         </div>
 
-        {/* Main - Fund Request Form */}
         <div className="lg:col-span-2 space-y-8">
           <Card className="glass-card border-white/5">
             <CardHeader>
@@ -150,7 +153,7 @@ export default function WalletPage() {
                           key={m}
                           type="button"
                           variant={method === m ? 'default' : 'outline'}
-                          className={`flex-1 ${method === m ? 'neon-glow' : 'border-white/5'}`}
+                          className={`flex-1 text-xs md:text-sm ${method === m ? 'neon-glow' : 'border-white/5'}`}
                           onClick={() => setMethod(m as any)}
                         >
                           {m}
@@ -163,37 +166,36 @@ export default function WalletPage() {
                 <div className="space-y-4">
                   <Label>Payment Proof Image</Label>
                   <div 
-                    className={`relative border-2 border-dashed rounded-2xl flex flex-col items-center justify-center p-8 transition-colors cursor-pointer ${proofImage ? 'border-primary/50 bg-primary/5' : 'border-white/10 hover:border-primary/30'}`}
+                    className={`relative border-2 border-dashed rounded-2xl flex flex-col items-center justify-center p-6 md:p-8 transition-colors cursor-pointer ${proofImage ? 'border-primary/50 bg-primary/5' : 'border-white/10 hover:border-primary/30'}`}
                     onClick={() => document.getElementById('proof-upload')?.click()}
                   >
                     {proofImage ? (
                       <div className="relative w-full h-48 rounded-lg overflow-hidden">
                         <img src={proofImage} alt="Proof" className="w-full h-full object-contain" />
-                        <Button size="icon" variant="destructive" className="absolute top-2 right-2" onClick={(e) => { e.stopPropagation(); setProofImage(null); }}>
+                        <Button size="icon" variant="destructive" className="absolute top-2 right-2 h-8 w-8" onClick={(e) => { e.stopPropagation(); setProofImage(null); }}>
                            <PlusCircle className="h-4 w-4 rotate-45" />
                         </Button>
                       </div>
                     ) : (
                       <>
-                        <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center mb-4">
-                          <Upload className="h-8 w-8 text-muted-foreground" />
+                        <div className="h-12 w-12 md:h-16 md:w-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                          <Upload className="h-6 w-6 md:h-8 md:w-8 text-muted-foreground" />
                         </div>
-                        <p className="font-bold">Click to upload screenshot</p>
-                        <p className="text-xs text-muted-foreground">JPG, PNG or WEBP (Max 5MB)</p>
+                        <p className="font-bold text-sm md:text-base">Click to upload screenshot</p>
+                        <p className="text-[10px] md:text-xs text-muted-foreground">JPG, PNG or WEBP (Max 5MB)</p>
                       </>
                     )}
                     <input id="proof-upload" type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
                   </div>
                 </div>
 
-                <Button className="w-full h-14 text-lg font-bold neon-glow" disabled={isSubmitting}>
+                <Button className="w-full h-12 md:h-14 text-base md:text-lg font-bold neon-glow" disabled={isSubmitting}>
                   {isSubmitting ? "Submitting..." : "Submit Fund Request"}
                 </Button>
               </form>
             </CardContent>
           </Card>
 
-          {/* Transaction History */}
           <Card className="glass-card border-white/5">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -206,26 +208,26 @@ export default function WalletPage() {
                 {userRequests.length > 0 ? (
                   userRequests.sort((a,b) => b.createdAt - a.createdAt).map((req) => (
                     <div key={req.id} className="flex items-center justify-between p-4 rounded-xl bg-muted/30 border border-white/5">
-                      <div className="flex items-center gap-4">
-                        <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center">
-                          <ArrowUpCircle className="h-5 w-5 text-primary" />
+                      <div className="flex items-center gap-3 md:gap-4">
+                        <div className="h-8 w-8 md:h-10 md:w-10 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                          <ArrowUpCircle className="h-4 w-4 md:h-5 md:w-5 text-primary" />
                         </div>
                         <div>
-                          <p className="font-bold">Rs. {req.amount.toLocaleString()}</p>
-                          <p className="text-xs text-muted-foreground">{new Date(req.createdAt).toLocaleDateString()} • {req.method}</p>
+                          <p className="font-bold text-sm md:text-base">Rs. {req.amount.toLocaleString()}</p>
+                          <p className="text-[10px] md:text-xs text-muted-foreground">{new Date(req.createdAt).toLocaleDateString()} • {req.method}</p>
                         </div>
                       </div>
-                      <Badge className={
+                      <Badge className={`text-[10px] md:text-xs ${
                         req.status === 'approved' ? 'bg-green-500/20 text-green-500 border-green-500/30' :
                         req.status === 'rejected' ? 'bg-destructive/20 text-destructive border-destructive/30' :
                         'bg-yellow-500/20 text-yellow-500 border-yellow-500/30'
-                      }>
+                      }`}>
                         {req.status.toUpperCase()}
                       </Badge>
                     </div>
                   ))
                 ) : (
-                  <div className="py-12 text-center text-muted-foreground">
+                  <div className="py-12 text-center text-muted-foreground text-sm">
                      No fund requests yet.
                   </div>
                 )}

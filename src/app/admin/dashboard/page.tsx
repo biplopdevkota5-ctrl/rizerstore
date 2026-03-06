@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -28,7 +27,6 @@ import {
   Trash2,
   Check,
   X,
-  Eye,
   Ticket,
   Maximize2,
   Upload,
@@ -37,6 +35,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { Product, Announcement, User, PromoCode } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 export default function AdminDashboard() {
   const { currentUser, products, fundRequests, purchases, announcements, promoCodes, syncData } = useAppContext();
@@ -218,7 +217,7 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-12">
+    <div className="container mx-auto px-4 py-8 md:py-12">
       <div className="flex flex-col gap-8">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl md:text-4xl font-bold font-headline">Admin <span className="text-primary">Console</span></h1>
@@ -581,7 +580,6 @@ export default function AdminDashboard() {
         </Tabs>
       </div>
 
-      {/* Proof Image Viewer Dialog */}
       <Dialog open={!!viewingProof} onOpenChange={(open) => !open && setViewingProof(null)}>
         <DialogContent className="max-w-3xl glass-card border-white/10 p-4">
           <DialogHeader>
