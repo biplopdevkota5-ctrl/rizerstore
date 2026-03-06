@@ -4,23 +4,22 @@ import { getFirestore, Firestore } from "firebase/firestore";
 import { getAuth, Auth } from "firebase/auth";
 
 /**
- * Firebase configuration using environment variables.
- * These must be set in your hosting platform (Netlify, Vercel, etc.)
+ * Firebase configuration using the provided project details.
  */
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "",
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyD6wv_EuiASof1HfLNeky8Qy3VpTAepprM",
   authDomain: "rizerstore-e022b.firebaseapp.com",
   projectId: "rizerstore-e022b",
-  storageBucket: "rizerstore-e022b.appspot.com",
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "",
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || ""
+  storageBucket: "rizerstore-e022b.firebasestorage.app",
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "561049848687",
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "1:561049848687:web:9909bfc214a232bc83b69a"
 };
 
 let app: FirebaseApp | undefined;
 let db: Firestore | undefined;
 let auth: Auth | undefined;
 
-// Defensive check: Only initialize if the API key is provided and looks valid
+// Defensive check: Only initialize if the API key is provided
 const isConfigValid = typeof firebaseConfig.apiKey === 'string' && firebaseConfig.apiKey.length > 10;
 
 if (typeof window !== "undefined") {
