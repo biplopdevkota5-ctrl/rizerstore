@@ -48,6 +48,9 @@ export const dbService = {
   async addFundRequest(request: FundRequest) {
     await setDoc(doc(db, COLLECTIONS.FUND_REQUESTS, request.id), request);
   },
+  async deleteFundRequest(id: string) {
+    await deleteDoc(doc(db, COLLECTIONS.FUND_REQUESTS, id));
+  },
   async updateFundRequestStatus(id: string, status: 'approved' | 'rejected') {
     const ref = doc(db, COLLECTIONS.FUND_REQUESTS, id);
     await updateDoc(ref, { status });
