@@ -62,7 +62,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (!isLoading && !currentUser) {
-      toast({ title: "Access Denied", description: "Please login first.", variant: "destructive" });
+      toast({ title: "Access Denied", description: "Please login first to access the command center.", variant: "destructive" });
       router.push('/auth?tab=login');
     } else if (currentUser) {
       fetchAllUsers();

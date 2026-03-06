@@ -9,9 +9,7 @@ import {
   Gamepad2, 
   Wallet, 
   History, 
-  LayoutDashboard, 
   LogOut, 
-  User as UserIcon,
   Menu,
   ShieldCheck,
   CreditCard
@@ -49,7 +47,7 @@ export function Navbar() {
     }, 2000);
 
     if (logoClicks.current >= 10) {
-      toast({ title: "Authorized", description: "Entering Admin Portal..." });
+      toast({ title: "Authorized", description: "Opening Security Interface..." });
       router.push('/admin/dashboard');
       logoClicks.current = 0;
     }
@@ -128,7 +126,7 @@ export function Navbar() {
                   <DropdownMenuItem asChild className="focus:bg-primary/20 cursor-pointer">
                     <Link href="/admin/dashboard" className="flex items-center gap-2">
                       <ShieldCheck className="h-4 w-4 text-primary" />
-                      Admin Panel
+                      Command Center
                     </Link>
                   </DropdownMenuItem>
                   
