@@ -125,14 +125,12 @@ export function Navbar() {
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator className="bg-white/5" />
                   
-                  {currentUser.role === 'admin' && (
-                    <DropdownMenuItem asChild className="focus:bg-primary/20 cursor-pointer">
-                      <Link href="/admin/dashboard" className="flex items-center gap-2">
-                        <ShieldCheck className="h-4 w-4 text-primary" />
-                        Admin Panel
-                      </Link>
-                    </DropdownMenuItem>
-                  )}
+                  <DropdownMenuItem asChild className="focus:bg-primary/20 cursor-pointer">
+                    <Link href="/admin/dashboard" className="flex items-center gap-2">
+                      <ShieldCheck className="h-4 w-4 text-primary" />
+                      Admin Panel
+                    </Link>
+                  </DropdownMenuItem>
                   
                   {userLinks.map((link) => (
                     <DropdownMenuItem key={link.href} asChild className="focus:bg-primary/20 cursor-pointer">
