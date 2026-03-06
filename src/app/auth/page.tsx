@@ -34,17 +34,17 @@ function AuthContent() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isFirebaseConfigured) {
+    if (!isFirebaseConfigured || !auth || !db) {
       toast({ title: "Configuration Missing", description: "Firebase is not set up correctly.", variant: "destructive" });
       return;
     }
     setIsLoading(true);
     
     try {
-      const userCredential = await signInWithEmailAndPassword(auth!, email, password);
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      const userDoc = await getDoc(doc(db!, "users", user.uid));
+      const userDoc = await getDoc(doc(db, "users", user.uid));
       if (userDoc.exists()) {
         const userData = userDoc.data();
         setCurrentUser({
@@ -77,7 +77,7 @@ function AuthContent() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isFirebaseConfigured) {
+    if (!isFirebaseConfigured || !auth || !db) {
       toast({ title: "Configuration Missing", description: "Firebase is not set up correctly.", variant: "destructive" });
       return;
     }
@@ -89,7 +89,7 @@ function AuthContent() {
     setIsLoading(true);
 
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth!, email, password);
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
       await updateProfile(user, { displayName: username });
@@ -103,7 +103,7 @@ function AuthContent() {
         createdAt: Date.now()
       };
 
-      await setDoc(doc(db!, "users", user.uid), newUserProfile);
+      await setDoc(doc(db, "users", user.uid), newUserProfile);
       
       setCurrentUser({
         id: user.uid,
@@ -138,7 +138,7 @@ function AuthContent() {
                 <p className="font-bold">Setup Required</p>
               </div>
               <p className="text-xs text-muted-foreground">
-                Firebase is not configured. Add your API keys in <strong>Netlify Settings > Environment Variables</strong>.
+                Firebase is not configured. Add your API keys in <strong>Netlify Settings &gt; Environment Variables</strong>.
               </p>
               <Button size="sm" variant="outline" className="text-xs h-8 gap-2 border-primary/20" onClick={() => window.open('https://console.firebase.google.com/', '_blank')}>
                 Firebase Console <ExternalLink className="h-3 w-3" />
