@@ -36,12 +36,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // 1. Listen for Auth State Changes
   useEffect(() => {
-    if (!auth || !db) {
+    if (!isFirebaseConfigured) {
       setIsLoading(false);
       return;
     }
 
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth!, async (firebaseUser) => {
       if (firebaseUser) {
         const userRef = doc(db!, 'users', firebaseUser.uid);
         
@@ -70,30 +70,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [isFirebaseConfigured]);
 
   // 2. Listen for Global Collections
   useEffect(() => {
-    if (!db) return;
+    if (!isFirebaseConfigured) return;
 
-    const unsubProducts = onSnapshot(query(collection(db, 'products'), orderBy('createdAt', 'desc')), (snap) => {
-      setProducts(snap.docs.map(doc => doc.data() as Product));
+    const unsubProducts = onSnapshot(query(collection(db!, 'products'), orderBy('createdAt', 'desc')), (snap) => {
+      setProducts(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Product)));
     }, (err) => console.error("Products error:", err));
 
-    const unsubFunds = onSnapshot(query(collection(db, 'fundRequests'), orderBy('createdAt', 'desc')), (snap) => {
-      setFundRequests(snap.docs.map(doc => doc.data() as FundRequest));
+    const unsubFunds = onSnapshot(query(collection(db!, 'fundRequests'), orderBy('createdAt', 'desc')), (snap) => {
+      setFundRequests(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as FundRequest)));
     }, (err) => console.error("Funds error:", err));
 
-    const unsubPurchases = onSnapshot(query(collection(db, 'purchases'), orderBy('createdAt', 'desc')), (snap) => {
-      setPurchases(snap.docs.map(doc => doc.data() as Purchase));
+    const unsubPurchases = onSnapshot(query(collection(db!, 'purchases'), orderBy('createdAt', 'desc')), (snap) => {
+      setPurchases(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Purchase)));
     }, (err) => console.error("Purchases error:", err));
 
-    const unsubAnn = onSnapshot(query(collection(db, 'announcements'), orderBy('createdAt', 'desc')), (snap) => {
-      setAnnouncements(snap.docs.map(doc => doc.data() as Announcement));
+    const unsubAnn = onSnapshot(query(collection(db!, 'announcements'), orderBy('createdAt', 'desc')), (snap) => {
+      setAnnouncements(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Announcement)));
     }, (err) => console.error("Announcements error:", err));
 
-    const unsubPromos = onSnapshot(query(collection(db, 'promoCodes'), orderBy('createdAt', 'desc')), (snap) => {
-      setPromoCodes(snap.docs.map(doc => doc.data() as PromoCode));
+    const unsubPromos = onSnapshot(query(collection(db!, 'promoCodes'), orderBy('createdAt', 'desc')), (snap) => {
+      setPromoCodes(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as PromoCode)));
     }, (err) => console.error("Promos error:", err));
 
     return () => {
@@ -103,7 +103,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       unsubAnn();
       unsubPromos();
     };
-  }, []);
+  }, [isFirebaseConfigured]);
 
   const syncData = () => {};
 

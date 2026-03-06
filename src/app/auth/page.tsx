@@ -4,7 +4,7 @@
 import { useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAppContext } from "@/lib/context";
-import { db, auth } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
 import { 
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword,
@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Gamepad2, Lock, Mail, User as UserIcon, Loader2, AlertTriangle } from "lucide-react";
+import { Gamepad2, Lock, Mail, User as UserIcon, Loader2, AlertTriangle, ExternalLink } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 function AuthContent() {
@@ -34,17 +34,17 @@ function AuthContent() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!auth || !db) {
-      toast({ title: "Configuration Missing", description: "Firebase is not configured yet.", variant: "destructive" });
+    if (!isFirebaseConfigured) {
+      toast({ title: "Configuration Missing", description: "Firebase is not set up correctly.", variant: "destructive" });
       return;
     }
     setIsLoading(true);
     
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(auth!, email, password);
       const user = userCredential.user;
 
-      const userDoc = await getDoc(doc(db, "users", user.uid));
+      const userDoc = await getDoc(doc(db!, "users", user.uid));
       if (userDoc.exists()) {
         const userData = userDoc.data();
         setCurrentUser({
@@ -68,7 +68,6 @@ function AuthContent() {
       let message = "Invalid email or password.";
       if (error.code === 'auth/user-not-found') message = "Account not found.";
       if (error.code === 'auth/wrong-password') message = "Incorrect password.";
-      if (error.code === 'auth/invalid-api-key') message = "Invalid API Key. Check your settings.";
       
       toast({ title: "Login Failed", description: message, variant: "destructive" });
     } finally {
@@ -78,8 +77,8 @@ function AuthContent() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!auth || !db) {
-      toast({ title: "Configuration Missing", description: "Firebase is not configured yet.", variant: "destructive" });
+    if (!isFirebaseConfigured) {
+      toast({ title: "Configuration Missing", description: "Firebase is not set up correctly.", variant: "destructive" });
       return;
     }
     if (username.length < 3) {
@@ -90,7 +89,7 @@ function AuthContent() {
     setIsLoading(true);
 
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const userCredential = await createUserWithEmailAndPassword(auth!, email, password);
       const user = userCredential.user;
 
       await updateProfile(user, { displayName: username });
@@ -104,7 +103,7 @@ function AuthContent() {
         createdAt: Date.now()
       };
 
-      await setDoc(doc(db, "users", user.uid), newUserProfile);
+      await setDoc(doc(db!, "users", user.uid), newUserProfile);
       
       setCurrentUser({
         id: user.uid,
@@ -119,8 +118,8 @@ function AuthContent() {
     } catch (error: any) {
       console.error("Signup Error:", error);
       let message = "Could not create account.";
-      if (error.code === 'auth/email-already-in-use') message = "Email is already registered.";
-      if (error.code === 'auth/weak-password') message = "Password should be at least 6 characters.";
+      if (error.code === 'auth/email-already-in-use') message = "Email already in use.";
+      if (error.code === 'auth/weak-password') message = "Password is too weak.";
       
       toast({ title: "Signup Error", description: message, variant: "destructive" });
     } finally {
@@ -132,13 +131,18 @@ function AuthContent() {
     <div className="container mx-auto px-4 py-12 md:py-20 flex justify-center items-center">
       <div className="w-full max-w-md space-y-6">
         {!isFirebaseConfigured && (
-          <Card className="border-yellow-500/50 bg-yellow-500/10 text-yellow-500 mb-6">
-            <CardContent className="p-4 flex gap-4">
-              <AlertTriangle className="h-6 w-6 shrink-0" />
-              <div className="text-sm">
-                <p className="font-bold">Firebase Configuration Missing</p>
-                <p>To fix this, go to your <strong>Netlify Dashboard > Site Settings > Environment Variables</strong> and add your <strong>API Key</strong> and <strong>App ID</strong>.</p>
+          <Card className="border-primary/50 bg-primary/10 text-primary mb-6 animate-pulse">
+            <CardContent className="p-4 flex flex-col gap-3">
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="h-6 w-6 shrink-0" />
+                <p className="font-bold">Setup Required</p>
               </div>
+              <p className="text-xs text-muted-foreground">
+                Firebase is not configured. Add your API keys in <strong>Netlify Settings > Environment Variables</strong>.
+              </p>
+              <Button size="sm" variant="outline" className="text-xs h-8 gap-2 border-primary/20" onClick={() => window.open('https://console.firebase.google.com/', '_blank')}>
+                Firebase Console <ExternalLink className="h-3 w-3" />
+              </Button>
             </CardContent>
           </Card>
         )}
@@ -172,7 +176,7 @@ function AuthContent() {
                         required 
                         value={email} 
                         onChange={(e) => setEmail(e.target.value)} 
-                        disabled={isLoading}
+                        disabled={isLoading || !isFirebaseConfigured}
                       />
                     </div>
                   </div>
@@ -188,7 +192,7 @@ function AuthContent() {
                         required 
                         value={password} 
                         onChange={(e) => setPassword(e.target.value)} 
-                        disabled={isLoading}
+                        disabled={isLoading || !isFirebaseConfigured}
                       />
                     </div>
                   </div>
@@ -212,7 +216,7 @@ function AuthContent() {
                         required 
                         value={username} 
                         onChange={(e) => setUsername(e.target.value)} 
-                        disabled={isLoading}
+                        disabled={isLoading || !isFirebaseConfigured}
                       />
                     </div>
                   </div>
@@ -228,7 +232,7 @@ function AuthContent() {
                         required 
                         value={email} 
                         onChange={(e) => setEmail(e.target.value)} 
-                        disabled={isLoading}
+                        disabled={isLoading || !isFirebaseConfigured}
                       />
                     </div>
                   </div>
@@ -244,7 +248,7 @@ function AuthContent() {
                         required 
                         value={password} 
                         onChange={(e) => setPassword(e.target.value)} 
-                        disabled={isLoading}
+                        disabled={isLoading || !isFirebaseConfigured}
                       />
                     </div>
                   </div>
