@@ -158,7 +158,7 @@ function AuthContent() {
             <AlertTriangle className="h-12 w-12 text-primary mx-auto mb-4" />
             <CardTitle>Setup Required</CardTitle>
             <CardDescription>Firebase keys are missing in your environment.</CardDescription>
-          </Header>
+          </CardHeader>
           <CardContent className="space-y-4">
             <div className="p-4 rounded-lg bg-background/50 text-sm space-y-2">
               <p className="font-bold">Add these to your Netlify dashboard:</p>

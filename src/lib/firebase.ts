@@ -5,7 +5,6 @@ import { getAuth, Auth } from "firebase/auth";
 
 /**
  * Firebase configuration for rizerstore-e022b.
- * Replace placeholders with values from your Firebase Console -> Project Settings.
  */
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyD6wv_EuiASof1HfLNeky8Qy3VpTAepprM",
