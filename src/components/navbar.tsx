@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAppContext } from "@/lib/context";
 import { Button } from "@/components/ui/button";
 import { 
@@ -23,13 +23,36 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 export function Navbar() {
   const { currentUser, logout } = useAppContext();
   const pathname = usePathname();
+  const router = useRouter();
+  const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
+  
+  // Secret Click Logic
+  const logoClicks = useRef(0);
+  const clickTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  const handleLogoClick = () => {
+    logoClicks.current += 1;
+    
+    if (clickTimeout.current) clearTimeout(clickTimeout.current);
+    
+    clickTimeout.current = setTimeout(() => {
+      logoClicks.current = 0;
+    }, 2000);
+
+    if (logoClicks.current >= 10) {
+      toast({ title: "Authorized Access", description: "Navigating to Admin Panel..." });
+      router.push('/admin/dashboard');
+      logoClicks.current = 0;
+    }
+  };
 
   const navLinks = [
     { href: "/", label: "Home", icon: Gamepad2 },
@@ -45,14 +68,14 @@ export function Navbar() {
     <nav className="sticky top-0 z-50 w-full border-b border-white/5 bg-background/80 backdrop-blur-md">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <div className="flex items-center gap-8">
-          <Link href="/" className="flex items-center gap-2">
+          <div onClick={handleLogoClick} className="flex items-center gap-2 cursor-pointer select-none">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary neon-glow">
               <Gamepad2 className="h-6 w-6 text-white" />
             </div>
             <span className="font-headline text-xl font-bold tracking-tight neon-text">
               RIZER <span className="text-primary">STORE</span>
             </span>
-          </Link>
+          </div>
 
           <div className="hidden md:flex items-center gap-6">
             {navLinks.map((link) => (

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, Product, FundRequest, Purchase, Announcement } from './types';
+import { User, Product, FundRequest, Purchase, Announcement, PromoCode } from './types';
 import { db } from './db';
 
 interface AppContextType {
@@ -10,6 +10,7 @@ interface AppContextType {
   fundRequests: FundRequest[];
   purchases: Purchase[];
   announcements: Announcement[];
+  promoCodes: PromoCode[];
   setCurrentUser: (user: User | null) => void;
   syncData: () => void;
   logout: () => void;
@@ -23,6 +24,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [fundRequests, setFundRequests] = useState<FundRequest[]>([]);
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [promoCodes, setPromoCodes] = useState<PromoCode[]>([]);
 
   const syncData = () => {
     const session = db.getCurrentSession();
@@ -43,6 +45,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setFundRequests(db.getFundRequests());
     setPurchases(db.getPurchases());
     setAnnouncements(db.getAnnouncements());
+    setPromoCodes(db.getPromoCodes());
   };
 
   useEffect(() => {
@@ -66,7 +69,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       products, 
       fundRequests, 
       purchases, 
-      announcements, 
+      announcements,
+      promoCodes,
       setCurrentUser, 
       syncData,
       logout 

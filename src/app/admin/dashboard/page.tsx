@@ -22,14 +22,14 @@ import {
   Check,
   X,
   Eye,
-  Edit2
+  Ticket
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { Product, Announcement, User } from "@/lib/types";
+import { Product, Announcement, User, PromoCode } from "@/lib/types";
 
 export default function AdminDashboard() {
-  const { currentUser, products, fundRequests, purchases, announcements, syncData } = useAppContext();
+  const { currentUser, products, fundRequests, purchases, announcements, promoCodes, syncData } = useAppContext();
   const { toast } = useToast();
   const router = useRouter();
 
@@ -41,6 +41,12 @@ export default function AdminDashboard() {
   const [newProductPrice, setNewProductPrice] = useState('');
   const [newProductImg, setNewProductImg] = useState('');
   const [newProductTag, setNewProductTag] = useState('');
+  
+  const [newPromoCode, setNewPromoCode] = useState('');
+  const [newPromoDiscount, setNewPromoDiscount] = useState('');
+  const [newPromoLimit, setNewPromoLimit] = useState('');
+  const [newPromoExpiry, setNewPromoExpiry] = useState('');
+
   const [newAnn, setNewAnn] = useState('');
 
   useEffect(() => {
@@ -90,7 +96,6 @@ export default function AdminDashboard() {
     );
   }
 
-  // Admin Actions
   const handleApproveFund = (reqId: string) => {
     const allRequests = db.getFundRequests();
     const reqIndex = allRequests.findIndex(r => r.id === reqId);
@@ -149,6 +154,32 @@ export default function AdminDashboard() {
     toast({ title: "Product Deleted", description: "Item removed from store." });
   };
 
+  const handleAddPromo = (e: React.FormEvent) => {
+    e.preventDefault();
+    const newPromo: PromoCode = {
+      id: Math.random().toString(36).substring(7),
+      code: newPromoCode.toUpperCase(),
+      discountAmount: parseFloat(newPromoDiscount),
+      usageLimit: newPromoLimit ? parseInt(newPromoLimit) : null,
+      usedCount: 0,
+      expiryDate: newPromoExpiry ? new Date(newPromoExpiry).getTime() : null,
+      createdAt: Date.now()
+    };
+
+    const allPromos = db.getPromoCodes();
+    db.savePromoCodes([...allPromos, newPromo]);
+    syncData();
+    setNewPromoCode(''); setNewPromoDiscount(''); setNewPromoLimit(''); setNewPromoExpiry('');
+    toast({ title: "Promo Created", description: `Code ${newPromo.code} is now active.` });
+  };
+
+  const handleDeletePromo = (id: string) => {
+    const all = db.getPromoCodes();
+    db.savePromoCodes(all.filter(p => p.id !== id));
+    syncData();
+    toast({ title: "Promo Deleted", description: "Code has been removed." });
+  };
+
   const handlePostAnn = (e: React.FormEvent) => {
     e.preventDefault();
     const newAnnouncement: Announcement = {
@@ -172,12 +203,15 @@ export default function AdminDashboard() {
         </div>
 
         <Tabs defaultValue="funds" className="w-full">
-          <TabsList className="grid grid-cols-2 md:grid-cols-5 h-auto gap-2 bg-transparent mb-8">
+          <TabsList className="grid grid-cols-2 md:grid-cols-6 h-auto gap-2 bg-transparent mb-8">
             <TabsTrigger value="funds" className="bg-muted/50 data-[state=active]:bg-primary h-12 gap-2">
               <Wallet className="h-4 w-4" /> Funds
             </TabsTrigger>
             <TabsTrigger value="products" className="bg-muted/50 data-[state=active]:bg-primary h-12 gap-2">
               <Package className="h-4 w-4" /> Products
+            </TabsTrigger>
+            <TabsTrigger value="promos" className="bg-muted/50 data-[state=active]:bg-primary h-12 gap-2">
+              <Ticket className="h-4 w-4" /> Promos
             </TabsTrigger>
             <TabsTrigger value="orders" className="bg-muted/50 data-[state=active]:bg-primary h-12 gap-2">
               <ShoppingBag className="h-4 w-4" /> Orders
@@ -311,12 +345,83 @@ export default function AdminDashboard() {
                         <TableCell>Rs. {p.price}</TableCell>
                         <TableCell>{p.tag ? <Badge>{p.tag}</Badge> : '-'}</TableCell>
                         <TableCell className="text-right">
-                           <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleDeleteProduct(p.id)}>
+                           <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDeleteProduct(p.id)}>
                              <Trash2 className="h-4 w-4" />
                            </Button>
                         </TableCell>
                       </TableRow>
                     ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="promos" className="space-y-8">
+            <Card className="glass-card border-white/5">
+              <CardHeader>
+                <CardTitle>Generate Promo Code</CardTitle>
+                <CardDescription>Create discounts for users with limits and expiry.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                 <form onSubmit={handleAddPromo} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+                    <div className="space-y-2">
+                      <Label>Code</Label>
+                      <Input value={newPromoCode} onChange={(e) => setNewPromoCode(e.target.value)} required placeholder="SAVE50" className="bg-muted/50" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Discount (NPR)</Label>
+                      <Input type="number" value={newPromoDiscount} onChange={(e) => setNewPromoDiscount(e.target.value)} required placeholder="50" className="bg-muted/50" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Usage Limit (Optional)</Label>
+                      <Input type="number" value={newPromoLimit} onChange={(e) => setNewPromoLimit(e.target.value)} placeholder="Forever if empty" className="bg-muted/50" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Expiry Date (Optional)</Label>
+                      <Input type="date" value={newPromoExpiry} onChange={(e) => setNewPromoExpiry(e.target.value)} className="bg-muted/50" />
+                    </div>
+                    <Button type="submit" className="lg:col-span-4 neon-glow">
+                      <Plus className="h-4 w-4 mr-2" /> Activate Promo
+                    </Button>
+                 </form>
+              </CardContent>
+            </Card>
+
+            <Card className="glass-card border-white/5">
+              <CardHeader>
+                <CardTitle>Active Promos</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-white/5">
+                      <TableHead>Code</TableHead>
+                      <TableHead>Discount</TableHead>
+                      <TableHead>Used</TableHead>
+                      <TableHead>Limit</TableHead>
+                      <TableHead>Expiry</TableHead>
+                      <TableHead className="text-right">Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {promoCodes.map((pr) => (
+                      <TableRow key={pr.id} className="border-white/5">
+                        <TableCell className="font-bold text-primary">{pr.code}</TableCell>
+                        <TableCell>Rs. {pr.discountAmount}</TableCell>
+                        <TableCell>{pr.usedCount}</TableCell>
+                        <TableCell>{pr.usageLimit || 'Unlimited'}</TableCell>
+                        <TableCell>{pr.expiryDate ? new Date(pr.expiryDate).toLocaleDateString() : 'Forever'}</TableCell>
+                        <TableCell className="text-right">
+                          <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDeletePromo(pr.id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {promoCodes.length === 0 && (
+                      <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No active promo codes</TableCell></TableRow>
+                    )}
                   </TableBody>
                 </Table>
               </CardContent>
@@ -335,7 +440,7 @@ export default function AdminDashboard() {
                       <TableHead>Order ID</TableHead>
                       <TableHead>Buyer</TableHead>
                       <TableHead>Product</TableHead>
-                      <TableHead>Price</TableHead>
+                      <TableHead>Final Price</TableHead>
                       <TableHead>Contact</TableHead>
                       <TableHead>Date</TableHead>
                     </TableRow>
@@ -346,7 +451,10 @@ export default function AdminDashboard() {
                         <TableCell className="font-mono text-xs">#{pur.id}</TableCell>
                         <TableCell className="font-bold">{pur.username}</TableCell>
                         <TableCell>{pur.productName}</TableCell>
-                        <TableCell className="text-primary font-bold">Rs. {pur.price}</TableCell>
+                        <TableCell className="text-primary font-bold">
+                          Rs. {pur.price}
+                          {pur.discountApplied && <span className="text-[10px] block text-green-500">-Rs.{pur.discountApplied} off</span>}
+                        </TableCell>
                         <TableCell className="text-xs">
                           <Badge variant="outline">{pur.contactMethod}</Badge> {pur.contactId}
                         </TableCell>

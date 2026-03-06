@@ -19,6 +19,16 @@ export interface Product {
   createdAt: number;
 }
 
+export interface PromoCode {
+  id: string;
+  code: string;
+  discountAmount: number;
+  usageLimit: number | null; // null = unlimited
+  usedCount: number;
+  expiryDate: number | null; // timestamp, null = forever
+  createdAt: number;
+}
+
 export interface FundRequest {
   id: string;
   userId: string;
@@ -37,6 +47,7 @@ export interface Purchase {
   productId: string;
   productName: string;
   price: number;
+  discountApplied?: number;
   contactMethod: string;
   contactId: string;
   status: 'completed';

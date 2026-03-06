@@ -1,4 +1,4 @@
-import { User, Product, FundRequest, Purchase, Announcement } from './types';
+import { User, Product, FundRequest, Purchase, Announcement, PromoCode } from './types';
 
 const STORAGE_KEYS = {
   USERS: 'rizer_users',
@@ -6,6 +6,7 @@ const STORAGE_KEYS = {
   FUND_REQUESTS: 'rizer_funds',
   PURCHASES: 'rizer_purchases',
   ANNOUNCEMENTS: 'rizer_announcements',
+  PROMO_CODES: 'rizer_promos',
   CURRENT_USER: 'rizer_session'
 };
 
@@ -58,6 +59,13 @@ export const db = {
     return data ? JSON.parse(data) : INITIAL_PRODUCTS;
   },
   saveProducts: (products: Product[]) => localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(products)),
+
+  getPromoCodes: (): PromoCode[] => {
+    if (typeof window === 'undefined') return [];
+    const data = localStorage.getItem(STORAGE_KEYS.PROMO_CODES);
+    return data ? JSON.parse(data) : [];
+  },
+  savePromoCodes: (promos: PromoCode[]) => localStorage.setItem(STORAGE_KEYS.PROMO_CODES, JSON.stringify(promos)),
 
   getFundRequests: (): FundRequest[] => {
     if (typeof window === 'undefined') return [];
