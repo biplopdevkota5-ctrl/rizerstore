@@ -19,7 +19,6 @@ let app: FirebaseApp;
 let db: Firestore;
 let auth: Auth;
 
-// Idempotent initialization
 try {
   app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
   db = getFirestore(app);

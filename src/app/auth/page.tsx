@@ -22,7 +22,7 @@ import { useToast } from "@/hooks/use-toast";
 function AuthContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { currentUser, isFirebaseConfigured, isLoading: isContextLoading } = useAppContext();
+  const { currentUser, isLoading: isContextLoading } = useAppContext();
   const { toast } = useToast();
   
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'login');
@@ -41,31 +41,31 @@ function AuthContent() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isFirebaseConfigured || !auth) {
-      toast({ title: "Configuration Error", description: "Firebase is not initialized.", variant: "destructive" });
+    if (!auth) {
+      toast({ title: "Configuration Error", description: "Auth service is unavailable.", variant: "destructive" });
       return;
     }
     
     setIsLoading(true);
-    
     try {
       await signInWithEmailAndPassword(auth, email, password);
       toast({ title: "Welcome Back!", description: "Log in successful." });
-      // Redirection handled by useEffect
+      router.push('/');
     } catch (error: any) {
       let message = "Invalid email or password.";
-      if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') message = "Incorrect credentials.";
+      if (error.code === 'auth/invalid-credential') message = "Incorrect credentials.";
       if (error.code === 'auth/user-not-found') message = "Account not found.";
       
       toast({ title: "Login Failed", description: message, variant: "destructive" });
+    } finally {
       setIsLoading(false);
     }
   };
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isFirebaseConfigured || !auth || !db) {
-      toast({ title: "Configuration Error", description: "Firebase is not initialized.", variant: "destructive" });
+    if (!auth || !db) {
+      toast({ title: "Configuration Error", description: "Database services unavailable.", variant: "destructive" });
       return;
     }
     
@@ -75,14 +75,12 @@ function AuthContent() {
     }
 
     setIsLoading(true);
-
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
       await updateProfile(user, { displayName: username });
 
-      // Create initial Firestore profile
       const newUserProfile = {
         id: user.uid,
         username: username.trim(),
@@ -93,29 +91,27 @@ function AuthContent() {
       };
 
       await setDoc(doc(db, "users", user.uid), newUserProfile);
-      
       toast({ title: "Success!", description: "Account created successfully." });
-      // Redirection handled by useEffect
+      router.push('/');
     } catch (error: any) {
       let message = "Could not create account.";
       if (error.code === 'auth/email-already-in-use') {
-        message = "Email is already registered. Please login.";
+        message = "Email already exists. Please login.";
         setActiveTab('login');
       } else if (error.code === 'auth/weak-password') {
         message = "Password should be at least 6 characters.";
       }
-      
       toast({ title: "Signup Failed", description: message, variant: "destructive" });
+    } finally {
       setIsLoading(false);
     }
   };
 
-  // Prevent flicker during auth check
   if (isContextLoading) {
     return (
       <div className="container min-h-[60vh] flex flex-col items-center justify-center gap-4">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="text-muted-foreground animate-pulse">Initializing Rizer Secure Gateway...</p>
+        <p className="text-muted-foreground animate-pulse">Entering Secure Gateway...</p>
       </div>
     );
   }
@@ -144,32 +140,14 @@ function AuthContent() {
                     <Label htmlFor="login-email">Email Address</Label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input 
-                        id="login-email" 
-                        placeholder="gamer@example.com" 
-                        className="pl-10 bg-muted/30 border-white/5" 
-                        type="email" 
-                        required 
-                        value={email} 
-                        onChange={(e) => setEmail(e.target.value)} 
-                        disabled={isLoading}
-                      />
+                      <Input id="login-email" placeholder="gamer@example.com" className="pl-10 bg-muted/30 border-white/5" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} disabled={isLoading} />
                     </div>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="login-password">Password</Label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input 
-                        id="login-password" 
-                        type="password" 
-                        placeholder="••••••••" 
-                        className="pl-10 bg-muted/30 border-white/5" 
-                        required 
-                        value={password} 
-                        onChange={(e) => setPassword(e.target.value)} 
-                        disabled={isLoading}
-                      />
+                      <Input id="login-password" type="password" placeholder="••••••••" className="pl-10 bg-muted/30 border-white/5" required value={password} onChange={(e) => setPassword(e.target.value)} disabled={isLoading} />
                     </div>
                   </div>
                   <Button type="submit" className="w-full font-bold h-11 neon-glow" disabled={isLoading}>
@@ -184,47 +162,21 @@ function AuthContent() {
                     <Label htmlFor="username">Display Name</Label>
                     <div className="relative">
                       <UserIcon className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input 
-                        id="username" 
-                        placeholder="SuperGamer" 
-                        className="pl-10 bg-muted/30 border-white/5" 
-                        required 
-                        value={username} 
-                        onChange={(e) => setUsername(e.target.value)} 
-                        disabled={isLoading}
-                      />
+                      <Input id="username" placeholder="SuperGamer" className="pl-10 bg-muted/30 border-white/5" required value={username} onChange={(e) => setUsername(e.target.value)} disabled={isLoading} />
                     </div>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="signup-email">Email Address</Label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input 
-                        id="signup-email" 
-                        type="email" 
-                        placeholder="gamer@example.com" 
-                        className="pl-10 bg-muted/30 border-white/5" 
-                        required 
-                        value={email} 
-                        onChange={(e) => setEmail(e.target.value)} 
-                        disabled={isLoading}
-                      />
+                      <Input id="signup-email" type="email" placeholder="gamer@example.com" className="pl-10 bg-muted/30 border-white/5" required value={email} onChange={(e) => setEmail(e.target.value)} disabled={isLoading} />
                     </div>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="signup-password">Password</Label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input 
-                        id="signup-password" 
-                        type="password" 
-                        placeholder="Minimum 6 characters" 
-                        className="pl-10 bg-muted/30 border-white/5" 
-                        required 
-                        value={password} 
-                        onChange={(e) => setPassword(e.target.value)} 
-                        disabled={isLoading}
-                      />
+                      <Input id="signup-password" type="password" placeholder="Minimum 6 characters" className="pl-10 bg-muted/30 border-white/5" required value={password} onChange={(e) => setPassword(e.target.value)} disabled={isLoading} />
                     </div>
                   </div>
                   <Button type="submit" className="w-full font-bold h-11 neon-glow" disabled={isLoading}>
