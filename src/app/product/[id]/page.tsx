@@ -107,16 +107,16 @@ export default function ProductDetailsPage({ params }: { params: Promise<{ id: s
   };
 
   return (
-    <div className="container mx-auto px-4 py-12">
-      <Link href="/store" className="inline-flex items-center gap-2 text-muted-foreground hover:text-primary mb-8 transition-colors">
+    <div className="container mx-auto px-4 py-8 md:py-12">
+      <Link href="/store" className="inline-flex items-center gap-2 text-muted-foreground hover:text-primary mb-6 md:mb-8 transition-colors">
         <ArrowLeft className="h-4 w-4" />
         Back to Store
       </Link>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
         {/* Left Column - Image */}
-        <div className="space-y-6">
-          <div className="relative aspect-[4/3] rounded-3xl overflow-hidden glass-card border-white/5 neon-glow">
+        <div className="space-y-4 md:space-y-6">
+          <div className="relative aspect-video md:aspect-[4/3] rounded-2xl md:rounded-3xl overflow-hidden glass-card border-white/5 neon-glow">
             <Image 
               src={product.imageUrl} 
               alt={product.name} 
@@ -124,16 +124,16 @@ export default function ProductDetailsPage({ params }: { params: Promise<{ id: s
               className="object-cover"
             />
             {product.tag && (
-              <Badge className="absolute top-6 left-6 bg-primary neon-glow text-lg px-4 py-1.5 font-bold">
+              <Badge className="absolute top-4 left-4 md:top-6 md:left-6 bg-primary neon-glow text-sm md:text-lg px-3 py-1 md:px-4 md:py-1.5 font-bold">
                 {product.tag}
               </Badge>
             )}
           </div>
           
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
              <Card className="glass-card border-white/5">
                <CardContent className="p-4 flex items-center gap-3">
-                 <ShieldCheck className="h-8 w-8 text-primary shrink-0" />
+                 <ShieldCheck className="h-6 w-6 md:h-8 md:w-8 text-primary shrink-0" />
                  <div>
                    <p className="font-bold text-sm">Safe & Secure</p>
                    <p className="text-xs text-muted-foreground">Verified gaming items</p>
@@ -142,7 +142,7 @@ export default function ProductDetailsPage({ params }: { params: Promise<{ id: s
              </Card>
              <Card className="glass-card border-white/5">
                <CardContent className="p-4 flex items-center gap-3">
-                 <Zap className="h-8 w-8 text-primary shrink-0" />
+                 <Zap className="h-6 w-6 md:h-8 md:w-8 text-primary shrink-0" />
                  <div>
                    <p className="font-bold text-sm">Direct Delivery</p>
                    <p className="text-xs text-muted-foreground">Instant support</p>
@@ -153,28 +153,28 @@ export default function ProductDetailsPage({ params }: { params: Promise<{ id: s
         </div>
 
         {/* Right Column - Details */}
-        <div className="flex flex-col gap-8">
+        <div className="flex flex-col gap-6 md:gap-8">
           <div>
-            <h1 className="text-4xl font-bold font-headline mb-4">{product.name}</h1>
-            <div className="flex items-center gap-4 mb-6">
-              <span className="text-3xl font-bold text-primary neon-text">Rs. {product.price.toLocaleString()}</span>
-              <Badge variant="outline" className="text-muted-foreground border-white/10 uppercase tracking-widest px-3">Available Now</Badge>
+            <h1 className="text-3xl md:text-4xl font-bold font-headline mb-3 md:mb-4">{product.name}</h1>
+            <div className="flex items-center gap-4 mb-4 md:mb-6">
+              <span className="text-2xl md:text-3xl font-bold text-primary neon-text">Rs. {product.price.toLocaleString()}</span>
+              <Badge variant="outline" className="text-muted-foreground border-white/10 uppercase tracking-widest px-3 text-[10px] md:text-xs">Available Now</Badge>
             </div>
-            <p className="text-muted-foreground leading-relaxed text-lg">
+            <p className="text-muted-foreground leading-relaxed text-base md:text-lg">
               {product.description}
             </p>
           </div>
 
-          <Card className="glass-card border-white/5 p-6 space-y-6">
+          <Card className="glass-card border-white/5 p-5 md:p-6 space-y-5 md:space-y-6">
             <div className="space-y-4">
               <div className="flex items-center gap-2 text-primary">
                 <ShoppingCart className="h-5 w-5" />
-                <h3 className="font-bold text-xl">Purchase Item</h3>
+                <h3 className="font-bold text-lg md:text-xl">Purchase Item</h3>
               </div>
               
               <div className="space-y-3">
                 <div className="space-y-2">
-                  <Label>Delivery Contact Method</Label>
+                  <Label className="text-sm">Delivery Contact Method</Label>
                   <Select onValueChange={setContactMethod}>
                     <SelectTrigger className="bg-muted/50 border-white/10">
                       <SelectValue placeholder="Select platform" />
@@ -190,7 +190,7 @@ export default function ProductDetailsPage({ params }: { params: Promise<{ id: s
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Username or Contact ID</Label>
+                  <Label className="text-sm">Username or Contact ID</Label>
                   <Input 
                     placeholder="e.g. @rizer_gamer" 
                     className="bg-muted/50 border-white/10"
@@ -202,7 +202,7 @@ export default function ProductDetailsPage({ params }: { params: Promise<{ id: s
             </div>
 
             <div className="pt-4 border-t border-white/5 space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between text-sm md:text-base">
                 <span className="text-muted-foreground">Your Balance:</span>
                 <span className={cn(
                   "font-bold",
@@ -213,7 +213,7 @@ export default function ProductDetailsPage({ params }: { params: Promise<{ id: s
               </div>
               
               <Button 
-                className="w-full h-14 text-lg font-bold neon-glow"
+                className="w-full h-12 md:h-14 text-base md:text-lg font-bold neon-glow"
                 size="lg"
                 onClick={handlePurchase}
                 disabled={isBuying}
@@ -222,9 +222,9 @@ export default function ProductDetailsPage({ params }: { params: Promise<{ id: s
               </Button>
 
               {currentUser && currentUser.balance < product.price && (
-                <div className="flex items-center gap-2 text-destructive text-sm bg-destructive/10 p-3 rounded-lg">
-                  <AlertCircle className="h-4 w-4" />
-                  Not enough balance. <Link href="/wallet" className="underline font-bold">Add funds here</Link>.
+                <div className="flex items-center gap-2 text-destructive text-xs md:text-sm bg-destructive/10 p-3 rounded-lg">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  <span>Not enough balance. <Link href="/wallet" className="underline font-bold">Add funds here</Link>.</span>
                 </div>
               )}
             </div>
