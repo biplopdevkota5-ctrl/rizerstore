@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, Suspense, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAppContext } from "@/lib/context";
 import { auth, db } from "@/lib/firebase";
@@ -10,19 +10,19 @@ import {
   signInWithEmailAndPassword,
   updateProfile
 } from "firebase/auth";
-import { doc, setDoc, getDoc } from "firebase/firestore";
+import { doc, setDoc } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Gamepad2, Lock, Mail, User as UserIcon, Loader2, ExternalLink, AlertTriangle } from "lucide-react";
+import { Gamepad2, Lock, Mail, User as UserIcon, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 function AuthContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { setCurrentUser, isFirebaseConfigured, isLoading: isContextLoading } = useAppContext();
+  const { currentUser, isFirebaseConfigured, isLoading: isContextLoading } = useAppContext();
   const { toast } = useToast();
   
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'login');
@@ -32,51 +32,30 @@ function AuthContent() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
+  // Redirect if already logged in
+  useEffect(() => {
+    if (!isContextLoading && currentUser) {
+      router.push('/');
+    }
+  }, [currentUser, isContextLoading, router]);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isFirebaseConfigured || !auth || !db) {
-      toast({ title: "Configuration Missing", description: "Firebase is not set up correctly.", variant: "destructive" });
+    if (!isFirebaseConfigured || !auth) {
+      toast({ title: "Configuration Missing", description: "Firebase is not initialized.", variant: "destructive" });
       return;
     }
+    
     setIsLoading(true);
     
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-
-      const userDoc = await getDoc(doc(db, "users", user.uid));
-      if (userDoc.exists()) {
-        const userData = userDoc.data();
-        setCurrentUser({
-          id: user.uid,
-          email: user.email!,
-          username: userData.username || user.displayName || 'User',
-          balance: userData.balance || 0,
-          role: userData.role || 'user'
-        });
-        
-        toast({ title: "Login Successful", description: `Welcome back!` });
-        
-        if (userData.role === 'admin') {
-          router.push('/admin/dashboard');
-        } else {
-          router.push('/');
-        }
-      } else {
-        setCurrentUser({
-          id: user.uid,
-          email: user.email!,
-          username: user.displayName || 'User',
-          balance: 0,
-          role: 'user'
-        });
-        router.push('/');
-      }
+      await signInWithEmailAndPassword(auth, email, password);
+      toast({ title: "Welcome Back!", description: "You have successfully logged in." });
+      router.push('/');
     } catch (error: any) {
       let message = "Invalid email or password.";
-      if (error.code === 'auth/user-not-found') message = "Account not found.";
-      if (error.code === 'auth/wrong-password') message = "Incorrect password.";
       if (error.code === 'auth/invalid-credential') message = "Incorrect login credentials.";
+      if (error.code === 'auth/user-not-found') message = "Account not found.";
       
       toast({ title: "Login Failed", description: message, variant: "destructive" });
     } finally {
@@ -87,11 +66,12 @@ function AuthContent() {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isFirebaseConfigured || !auth || !db) {
-      toast({ title: "Configuration Missing", description: "Firebase is not set up correctly.", variant: "destructive" });
+      toast({ title: "Configuration Missing", description: "Firebase is not initialized.", variant: "destructive" });
       return;
     }
+    
     if (username.length < 3) {
-      toast({ title: "Invalid Username", description: "Username must be at least 3 characters.", variant: "destructive" });
+      toast({ title: "Username too short", description: "Minimum 3 characters required.", variant: "destructive" });
       return;
     }
 
@@ -114,25 +94,15 @@ function AuthContent() {
 
       await setDoc(doc(db, "users", user.uid), newUserProfile);
       
-      setCurrentUser({
-        id: user.uid,
-        username,
-        email,
-        balance: 0,
-        role: 'user'
-      });
-
-      toast({ title: "Account Created!", description: "Welcome to Rizer Store." });
+      toast({ title: "Welcome to Rizer!", description: "Your account is ready." });
       router.push('/');
     } catch (error: any) {
       let message = "Could not create account.";
       if (error.code === 'auth/email-already-in-use') {
-        message = "This email is already registered. Please try logging in instead.";
+        message = "This email is already in use.";
         setActiveTab('login');
       } else if (error.code === 'auth/weak-password') {
-        message = "Password is too weak. Please use at least 6 characters.";
-      } else if (error.code === 'auth/invalid-email') {
-        message = "The email address is not valid.";
+        message = "Password must be at least 6 characters.";
       }
       
       toast({ title: "Signup Error", description: message, variant: "destructive" });
@@ -145,33 +115,7 @@ function AuthContent() {
     return (
       <div className="container p-20 text-center flex flex-col items-center gap-4">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="text-muted-foreground">Initializing connection...</p>
-      </div>
-    );
-  }
-
-  if (!isFirebaseConfigured) {
-    return (
-      <div className="container mx-auto px-4 py-20 flex justify-center items-center">
-        <Card className="w-full max-w-md glass-card border-primary/20 bg-primary/5">
-          <CardHeader className="text-center">
-            <AlertTriangle className="h-12 w-12 text-primary mx-auto mb-4" />
-            <CardTitle>Setup Required</CardTitle>
-            <CardDescription>Firebase keys are missing in your environment.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="p-4 rounded-lg bg-background/50 text-sm space-y-2">
-              <p className="font-bold">Add these to your Netlify dashboard:</p>
-              <ul className="list-disc list-inside opacity-70">
-                <li>NEXT_PUBLIC_FIREBASE_API_KEY</li>
-                <li>NEXT_PUBLIC_FIREBASE_APP_ID</li>
-              </ul>
-            </div>
-            <Button className="w-full gap-2" variant="outline" onClick={() => window.open('https://console.firebase.google.com/', '_blank')}>
-              Go to Firebase Console <ExternalLink className="h-4 w-4" />
-            </Button>
-          </CardContent>
-        </Card>
+        <p className="text-muted-foreground">Checking authentication status...</p>
       </div>
     );
   }
@@ -184,8 +128,8 @@ function AuthContent() {
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary mx-auto mb-4 neon-glow">
               <Gamepad2 className="h-7 w-7 text-white" />
             </div>
-            <CardTitle className="text-2xl font-headline font-bold">Rizer Account</CardTitle>
-            <CardDescription>Join the elite gaming community</CardDescription>
+            <CardTitle className="text-2xl font-headline font-bold">Rizer Store</CardTitle>
+            <CardDescription>Premium Gaming Marketplace</CardDescription>
           </CardHeader>
           <CardContent>
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -229,8 +173,7 @@ function AuthContent() {
                     </div>
                   </div>
                   <Button type="submit" className="w-full font-bold h-11 neon-glow" disabled={isLoading}>
-                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                    {isLoading ? "Authenticating..." : "Login to Store"}
+                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : "Sign In"}
                   </Button>
                 </form>
               </TabsContent>
@@ -238,12 +181,12 @@ function AuthContent() {
               <TabsContent value="signup">
                 <form onSubmit={handleSignup} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="username">Username</Label>
+                    <Label htmlFor="username">Display Name</Label>
                     <div className="relative">
                       <UserIcon className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input 
                         id="username" 
-                        placeholder="rizer_gamer" 
+                        placeholder="SuperGamer" 
                         className="pl-10 bg-muted/30" 
                         required 
                         value={username} 
@@ -275,7 +218,7 @@ function AuthContent() {
                       <Input 
                         id="signup-password" 
                         type="password" 
-                        placeholder="••••••••" 
+                        placeholder="Minimum 6 characters" 
                         className="pl-10 bg-muted/30" 
                         required 
                         value={password} 
@@ -285,17 +228,14 @@ function AuthContent() {
                     </div>
                   </div>
                   <Button type="submit" className="w-full font-bold h-11 neon-glow" disabled={isLoading}>
-                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                    {isLoading ? "Creating Account..." : "Create Account"}
+                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : "Create Account"}
                   </Button>
                 </form>
               </TabsContent>
             </Tabs>
           </CardContent>
-          <CardFooter className="flex flex-col gap-4 text-center">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-widest">
-              Secure Gateway Protected
-            </p>
+          <CardFooter className="text-center text-[10px] text-muted-foreground uppercase tracking-widest justify-center">
+            Secure Rizer Gateway
           </CardFooter>
         </Card>
       </div>
@@ -305,10 +245,7 @@ function AuthContent() {
 
 export default function AuthPage() {
   return (
-    <Suspense fallback={<div className="container p-20 text-center flex flex-col items-center gap-4">
-      <Loader2 className="h-10 w-10 animate-spin text-primary" />
-      <p>Loading Authentication...</p>
-    </div>}>
+    <Suspense fallback={<div className="container p-20 text-center"><Loader2 className="h-10 w-10 animate-spin mx-auto text-primary" /></div>}>
       <AuthContent />
     </Suspense>
   );

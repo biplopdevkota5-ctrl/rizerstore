@@ -5,7 +5,6 @@ import { getAuth, Auth } from "firebase/auth";
 
 /**
  * Firebase configuration for rizerstore-e022b.
- * Hardcoded to ensure the app works immediately.
  */
 const firebaseConfig = {
   apiKey: "AIzaSyD6wv_EuiASof1HfLNeky8Qy3VpTAepprM",

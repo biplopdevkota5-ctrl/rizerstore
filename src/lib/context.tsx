@@ -31,30 +31,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [promoCodes, setPromoCodes] = useState<PromoCode[]>([]);
   
-  // Initial loading state
   const isFirebaseConfigured = !!auth && !!db;
-  const [isLoading, setIsLoading] = useState(isFirebaseConfigured);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // 1. Safety Timeout for Loading State
+  // Safety timeout to ensure loading doesn't hang forever
   useEffect(() => {
-    if (!isLoading) return;
-    
-    const timeout = setTimeout(() => {
-      console.warn("Connection safety timeout reached. Releasing UI.");
-      setIsLoading(false);
-    }, 4000); // 4 seconds
-    
-    return () => clearTimeout(timeout);
+    const timer = setTimeout(() => {
+      if (isLoading) {
+        console.warn("Auth check timed out, releasing UI");
+        setIsLoading(false);
+      }
+    }, 4000);
+    return () => clearTimeout(timer);
   }, [isLoading]);
 
-  // 2. Listen for Auth State Changes
+  // Listen for Auth State Changes
   useEffect(() => {
-    if (!isFirebaseConfigured) {
+    if (!isFirebaseConfigured || !auth) {
       setIsLoading(false);
       return;
     }
 
-    const unsubscribe = onAuthStateChanged(auth!, async (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         const userRef = doc(db!, 'users', firebaseUser.uid);
         
@@ -64,15 +62,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             setInternalCurrentUser({
               id: firebaseUser.uid,
               email: firebaseUser.email!,
-              username: userData.username,
+              username: userData.username || 'Gamer',
               balance: userData.balance || 0,
               role: userData.role || 'user'
             });
           } else {
+            // Document doesn't exist yet (e.g., during signup process)
             setInternalCurrentUser({
               id: firebaseUser.uid,
               email: firebaseUser.email!,
-              username: firebaseUser.displayName || 'User',
+              username: firebaseUser.displayName || 'Gamer',
               balance: 0,
               role: 'user'
             });
@@ -93,27 +92,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, [isFirebaseConfigured]);
 
-  // 3. Listen for Global Collections
+  // Listen for Global Collections
   useEffect(() => {
-    if (!isFirebaseConfigured) return;
+    if (!isFirebaseConfigured || !db) return;
 
-    const unsubProducts = onSnapshot(query(collection(db!, 'products'), orderBy('createdAt', 'desc')), (snap) => {
+    const unsubProducts = onSnapshot(query(collection(db, 'products'), orderBy('createdAt', 'desc')), (snap) => {
       setProducts(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Product)));
     }, (err) => console.error("Products error:", err));
 
-    const unsubFunds = onSnapshot(query(collection(db!, 'fundRequests'), orderBy('createdAt', 'desc')), (snap) => {
+    const unsubFunds = onSnapshot(query(collection(db, 'fundRequests'), orderBy('createdAt', 'desc')), (snap) => {
       setFundRequests(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as FundRequest)));
     }, (err) => console.error("Funds error:", err));
 
-    const unsubPurchases = onSnapshot(query(collection(db!, 'purchases'), orderBy('createdAt', 'desc')), (snap) => {
+    const unsubPurchases = onSnapshot(query(collection(db, 'purchases'), orderBy('createdAt', 'desc')), (snap) => {
       setPurchases(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Purchase)));
     }, (err) => console.error("Purchases error:", err));
 
-    const unsubAnn = onSnapshot(query(collection(db!, 'announcements'), orderBy('createdAt', 'desc')), (snap) => {
+    const unsubAnn = onSnapshot(query(collection(db, 'announcements'), orderBy('createdAt', 'desc')), (snap) => {
       setAnnouncements(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Announcement)));
     }, (err) => console.error("Announcements error:", err));
 
-    const unsubPromos = onSnapshot(query(collection(db!, 'promoCodes'), orderBy('createdAt', 'desc')), (snap) => {
+    const unsubPromos = onSnapshot(query(collection(db, 'promoCodes'), orderBy('createdAt', 'desc')), (snap) => {
       setPromoCodes(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as PromoCode)));
     }, (err) => console.error("Promos error:", err));
 
@@ -137,7 +136,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     try {
       await signOut(auth);
       setInternalCurrentUser(null);
-      window.location.href = '/';
+      window.location.href = '/auth?tab=login';
     } catch (error) {
       console.error("Logout failed:", error);
     }
