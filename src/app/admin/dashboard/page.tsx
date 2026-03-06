@@ -30,12 +30,13 @@ import {
   X,
   Ticket,
   Maximize2,
-  Upload,
-  Image as ImageIcon
+  Clock,
+  History as HistoryIcon,
+  ChevronRight
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { Product, Announcement, User, PromoCode } from "@/lib/types";
+import { Product, Announcement, User, PromoCode, FundRequest } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { collection, getDocs, doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -50,18 +51,9 @@ export default function AdminDashboard() {
   const [viewingProof, setViewingProof] = useState<string | null>(null);
   const [allUsers, setAllUsers] = useState<User[]>([]);
 
-  // Forms
-  const [newProductName, setNewProductName] = useState('');
-  const [newProductPrice, setNewProductPrice] = useState('');
-  const [newProductImg, setNewProductImg] = useState('');
-  const [newProductTag, setNewProductTag] = useState('');
-  
-  const [newPromoCode, setNewPromoCode] = useState('');
-  const [newPromoDiscount, setNewPromoDiscount] = useState('');
-  const [newPromoLimit, setNewPromoLimit] = useState('');
-  const [newPromoExpiry, setNewPromoExpiry] = useState('');
-
-  const [newAnn, setNewAnn] = useState('');
+  // Split requests
+  const pendingRequests = fundRequests.filter(r => r.status === 'pending');
+  const processedRequests = fundRequests.filter(r => r.status !== 'pending');
 
   useEffect(() => {
     if (currentUser?.role === 'admin') {
@@ -71,8 +63,12 @@ export default function AdminDashboard() {
   }, [currentUser]);
 
   const fetchAllUsers = async () => {
-    const snap = await getDocs(collection(db, 'users'));
-    setAllUsers(snap.docs.map(d => d.data() as User));
+    try {
+      const snap = await getDocs(collection(db, 'users'));
+      setAllUsers(snap.docs.map(d => ({ ...d.data(), id: d.id } as User)));
+    } catch (e) {
+      console.error("Failed to fetch users", e);
+    }
   };
 
   const handleAdminLogin = (e: React.FormEvent) => {
@@ -113,7 +109,6 @@ export default function AdminDashboard() {
     if (!request) return;
 
     try {
-      // Get latest user balance from DB
       const userRef = doc(db, 'users', request.userId);
       const userSnap = await getDoc(userRef);
       if (userSnap.exists()) {
@@ -137,62 +132,6 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleAddProduct = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const product: Product = {
-      id: Math.random().toString(36).substring(7),
-      name: newProductName,
-      price: parseFloat(newProductPrice),
-      description: `Premium ${newProductName} service.`,
-      imageUrl: newProductImg || `https://picsum.photos/seed/${Math.random()}/600/400`,
-      tag: newProductTag as any || undefined,
-      createdAt: Date.now()
-    };
-
-    await dbService.addProduct(product);
-    setNewProductName(''); setNewProductPrice(''); setNewProductImg(''); setNewProductTag('');
-    toast({ title: "Product Added" });
-  };
-
-  const handleDeleteProduct = async (id: string) => {
-    await dbService.deleteProduct(id);
-    toast({ title: "Product Deleted" });
-  };
-
-  const handleAddPromo = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const promo: PromoCode = {
-      id: Math.random().toString(36).substring(7),
-      code: newPromoCode.toUpperCase(),
-      discountAmount: parseFloat(newPromoDiscount),
-      usageLimit: newPromoLimit ? parseInt(newPromoLimit) : null,
-      usedCount: 0,
-      expiryDate: newPromoExpiry ? new Date(newPromoExpiry).getTime() : null,
-      createdAt: Date.now()
-    };
-
-    await dbService.addPromoCode(promo);
-    setNewPromoCode(''); setNewPromoDiscount(''); setNewPromoLimit(''); setNewPromoExpiry('');
-    toast({ title: "Promo Created" });
-  };
-
-  const handleDeletePromo = async (id: string) => {
-    await dbService.deletePromoCode(id);
-    toast({ title: "Promo Deleted" });
-  };
-
-  const handlePostAnn = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const ann: Announcement = {
-      id: Math.random().toString(36).substring(7),
-      content: newAnn,
-      createdAt: Date.now()
-    };
-    await dbService.addAnnouncement(ann);
-    setNewAnn('');
-    toast({ title: "Announcement Posted" });
-  };
-
   return (
     <div className="container mx-auto px-4 py-8 md:py-12">
       <div className="flex flex-col gap-8">
@@ -211,32 +150,73 @@ export default function AdminDashboard() {
             <TabsTrigger value="ann" className="bg-muted/50 data-[state=active]:bg-primary"><Megaphone className="h-4 w-4 mr-2" /> News</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="funds">
+          <TabsContent value="funds" className="space-y-8">
             <Card className="glass-card border-white/5">
-              <CardHeader><CardTitle>Fund Requests</CardTitle></CardHeader>
-              <CardContent className="overflow-x-auto">
+              <CardHeader className="flex flex-row items-center justify-between border-b border-white/5">
+                <div>
+                  <CardTitle className="flex items-center gap-2"><Clock className="h-5 w-5 text-yellow-500" /> Pending Requests</CardTitle>
+                  <CardDescription>Requests waiting for your verification</CardDescription>
+                </div>
+                <Badge className="bg-yellow-500/20 text-yellow-500">{pendingRequests.length} Waiting</Badge>
+              </CardHeader>
+              <CardContent className="p-0 overflow-x-auto">
+                {pendingRequests.length > 0 ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-white/5"><TableHead>User</TableHead><TableHead>Amount</TableHead><TableHead>Method</TableHead><TableHead>Proof</TableHead><TableHead className="text-right">Action</TableHead></TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {pendingRequests.map((req) => (
+                        <TableRow key={req.id} className="border-white/5 hover:bg-white/5">
+                          <TableCell className="font-bold">{req.username}</TableCell>
+                          <TableCell className="text-primary font-bold">Rs. {req.amount.toLocaleString()}</TableCell>
+                          <TableCell><Badge variant="outline" className="border-white/10">{req.method}</Badge></TableCell>
+                          <TableCell>
+                            <Button variant="ghost" size="sm" className="gap-2 h-8" onClick={() => setViewingProof(req.proofImage)}>
+                              <Maximize2 className="h-3 w-3" /> View
+                            </Button>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button size="sm" className="bg-green-600 hover:bg-green-700 h-8 gap-1" onClick={() => handleApproveFund(req.id)}><Check className="h-3 w-3" /> Approve</Button>
+                              <Button size="sm" variant="destructive" className="h-8 gap-1" onClick={() => handleRejectFund(req.id)}><X className="h-3 w-3" /> Reject</Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <div className="p-12 text-center text-muted-foreground">
+                    <Check className="h-10 w-10 mx-auto mb-2 opacity-20" />
+                    <p>All clear! No pending requests.</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="glass-card border-white/5">
+              <CardHeader className="flex flex-row items-center justify-between border-b border-white/5">
+                <div>
+                  <CardTitle className="flex items-center gap-2 text-muted-foreground"><HistoryIcon className="h-5 w-5" /> Processing History</CardTitle>
+                  <CardDescription>Previously handled deposit requests</CardDescription>
+                </div>
+              </CardHeader>
+              <CardContent className="p-0 overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow><TableHead>User</TableHead><TableHead>Amount</TableHead><TableHead>Proof</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead></TableRow>
+                    <TableRow className="border-white/5"><TableHead>User</TableHead><TableHead>Amount</TableHead><TableHead>Date</TableHead><TableHead>Status</TableHead></TableRow>
                   </TableHeader>
                   <TableBody>
-                    {fundRequests.map((req) => (
-                      <TableRow key={req.id}>
+                    {processedRequests.slice(0, 10).map((req) => (
+                      <TableRow key={req.id} className="border-white/5 opacity-60">
                         <TableCell>{req.username}</TableCell>
-                        <TableCell className="text-primary font-bold">Rs. {req.amount}</TableCell>
+                        <TableCell>Rs. {req.amount.toLocaleString()}</TableCell>
+                        <TableCell className="text-xs">{new Date(req.createdAt).toLocaleDateString()}</TableCell>
                         <TableCell>
-                          <div className="h-10 w-16 rounded overflow-hidden cursor-pointer" onClick={() => setViewingProof(req.proofImage)}>
-                            <img src={req.proofImage} alt="Proof" className="object-cover w-full h-full" />
-                          </div>
-                        </TableCell>
-                        <TableCell><Badge className={cn(req.status === 'approved' ? 'bg-green-500/20 text-green-500' : req.status === 'rejected' ? 'bg-destructive/20 text-destructive' : 'bg-yellow-500/20 text-yellow-500')}>{req.status.toUpperCase()}</Badge></TableCell>
-                        <TableCell className="text-right">
-                          {req.status === 'pending' && (
-                            <div className="flex justify-end gap-1">
-                              <Button size="icon" variant="ghost" onClick={() => handleApproveFund(req.id)}><Check className="h-4 w-4 text-green-500" /></Button>
-                              <Button size="icon" variant="ghost" onClick={() => handleRejectFund(req.id)}><X className="h-4 w-4 text-destructive" /></Button>
-                            </div>
-                          )}
+                          <Badge className={cn(req.status === 'approved' ? 'bg-green-500/20 text-green-500' : 'bg-destructive/20 text-destructive')}>
+                            {req.status.toUpperCase()}
+                          </Badge>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -246,39 +226,46 @@ export default function AdminDashboard() {
             </Card>
           </TabsContent>
 
-          {/* Other tabs follow same pattern using context state and dbService calls */}
-          <TabsContent value="products">
-             {/* Product management implementation similar to local version but calling dbService */}
-             <Card className="glass-card border-white/5">
-                <CardHeader><CardTitle>Catalog</CardTitle></CardHeader>
-                <CardContent>
-                   <Table>
-                      <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Price</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
-                      <TableBody>
-                         {products.map(p => (
-                           <TableRow key={p.id}>
-                              <TableCell>{p.name}</TableCell>
-                              <TableCell>Rs. {p.price}</TableCell>
-                              <TableCell className="text-right"><Button variant="ghost" size="icon" onClick={() => handleDeleteProduct(p.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
-                           </TableRow>
-                         ))}
-                      </TableBody>
-                   </Table>
-                </CardContent>
-             </Card>
-          </TabsContent>
-          
           <TabsContent value="users">
             <Card className="glass-card border-white/5">
               <CardHeader><CardTitle>User Directory</CardTitle></CardHeader>
-              <CardContent>
+              <CardContent className="p-0">
                 <Table>
-                  <TableHeader><TableRow><TableHead>User</TableHead><TableHead>Balance</TableHead></TableRow></TableHeader>
+                  <TableHeader><TableRow className="border-white/5"><TableHead>Username</TableHead><TableHead>Email</TableHead><TableHead>Balance</TableHead><TableHead>Role</TableHead></TableRow></TableHeader>
                   <TableBody>
                     {allUsers.map(u => (
-                      <TableRow key={u.id}>
-                        <TableCell>{u.username}</TableCell>
+                      <TableRow key={u.id} className="border-white/5">
+                        <TableCell className="font-bold">{u.username}</TableCell>
+                        <TableCell className="text-muted-foreground">{u.email}</TableCell>
                         <TableCell className="text-primary font-bold">Rs. {u.balance?.toLocaleString()}</TableCell>
+                        <TableCell><Badge variant="outline">{u.role.toUpperCase()}</Badge></TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Other tabs remain similar but with improved table styling */}
+          <TabsContent value="products">
+            <Card className="glass-card border-white/5">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Product Catalog</CardTitle>
+                <Button size="sm" className="gap-2"><Plus className="h-4 w-4" /> Add New</Button>
+              </CardHeader>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader><TableRow className="border-white/5"><TableHead>Name</TableHead><TableHead>Price</TableHead><TableHead>Tag</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
+                  <TableBody>
+                    {products.map(p => (
+                      <TableRow key={p.id} className="border-white/5">
+                        <TableCell className="font-bold">{p.name}</TableCell>
+                        <TableCell>Rs. {p.price.toLocaleString()}</TableCell>
+                        <TableCell>{p.tag ? <Badge variant="secondary">{p.tag}</Badge> : '-'}</TableCell>
+                        <TableCell className="text-right">
+                          <Button variant="ghost" size="icon" onClick={() => dbService.deleteProduct(p.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -290,11 +277,13 @@ export default function AdminDashboard() {
       </div>
 
       <Dialog open={!!viewingProof} onOpenChange={(open) => !open && setViewingProof(null)}>
-        <DialogContent className="max-w-3xl glass-card border-white/10">
-          <DialogHeader><DialogTitle>Proof Verification</DialogTitle></DialogHeader>
-          <div className="mt-4 flex flex-col items-center gap-4">
-            <img src={viewingProof || ''} className="max-w-full max-h-[70vh] object-contain" />
-            <Button className="w-full" onClick={() => setViewingProof(null)}>Close</Button>
+        <DialogContent className="max-w-3xl glass-card border-white/10 p-0 overflow-hidden">
+          <div className="relative">
+            <img src={viewingProof || ''} className="w-full h-auto max-h-[85vh] object-contain" />
+            <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/80 to-transparent flex justify-between items-center">
+               <p className="text-sm font-bold text-white">Payment Proof Verification</p>
+               <Button variant="secondary" size="sm" onClick={() => setViewingProof(null)}>Close Viewer</Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

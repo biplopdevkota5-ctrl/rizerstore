@@ -4,7 +4,8 @@ import { getFirestore, Firestore } from "firebase/firestore";
 import { getAuth, Auth } from "firebase/auth";
 
 /**
- * Firebase configuration using environment variables for Netlify/Production security.
+ * Firebase configuration optimized for Netlify.
+ * Uses environment variables with hardcoded fallbacks for project rizerstore-e022b.
  */
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyD6wv_EuiASof1HfLNeky8Qy3VpTAepprM",
