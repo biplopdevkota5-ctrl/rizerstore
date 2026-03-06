@@ -63,7 +63,6 @@ function AuthContent() {
           router.push('/');
         }
       } else {
-        // Fallback for users with auth but no profile doc
         setCurrentUser({
           id: user.uid,
           email: user.email!,
@@ -74,7 +73,6 @@ function AuthContent() {
         router.push('/');
       }
     } catch (error: any) {
-      console.error("Login Error:", error);
       let message = "Invalid email or password.";
       if (error.code === 'auth/user-not-found') message = "Account not found.";
       if (error.code === 'auth/wrong-password') message = "Incorrect password.";
@@ -127,10 +125,15 @@ function AuthContent() {
       toast({ title: "Account Created!", description: "Welcome to Rizer Store." });
       router.push('/');
     } catch (error: any) {
-      console.error("Signup Error:", error);
       let message = "Could not create account.";
-      if (error.code === 'auth/email-already-in-use') message = "Email already in use.";
-      if (error.code === 'auth/weak-password') message = "Password is too weak.";
+      if (error.code === 'auth/email-already-in-use') {
+        message = "This email is already registered. Please try logging in instead.";
+        setActiveTab('login');
+      } else if (error.code === 'auth/weak-password') {
+        message = "Password is too weak. Please use at least 6 characters.";
+      } else if (error.code === 'auth/invalid-email') {
+        message = "The email address is not valid.";
+      }
       
       toast({ title: "Signup Error", description: message, variant: "destructive" });
     } finally {
@@ -138,7 +141,6 @@ function AuthContent() {
     }
   };
 
-  // If the app is initializing auth state
   if (isContextLoading) {
     return (
       <div className="container p-20 text-center flex flex-col items-center gap-4">
@@ -148,7 +150,6 @@ function AuthContent() {
     );
   }
 
-  // If Firebase keys are missing
   if (!isFirebaseConfigured) {
     return (
       <div className="container mx-auto px-4 py-20 flex justify-center items-center">
@@ -157,7 +158,7 @@ function AuthContent() {
             <AlertTriangle className="h-12 w-12 text-primary mx-auto mb-4" />
             <CardTitle>Setup Required</CardTitle>
             <CardDescription>Firebase keys are missing in your environment.</CardDescription>
-          </CardHeader>
+          </Header>
           <CardContent className="space-y-4">
             <div className="p-4 rounded-lg bg-background/50 text-sm space-y-2">
               <p className="font-bold">Add these to your Netlify dashboard:</p>
