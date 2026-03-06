@@ -30,19 +30,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [promoCodes, setPromoCodes] = useState<PromoCode[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
+  
+  // Initial loading state
   const isFirebaseConfigured = !!auth && !!db;
+  const [isLoading, setIsLoading] = useState(isFirebaseConfigured);
 
   // 1. Safety Timeout for Loading State
-  // This ensures the app doesn't get stuck on the loader if Firebase takes too long or fails
   useEffect(() => {
+    if (!isLoading) return;
+    
     const timeout = setTimeout(() => {
-      if (isLoading) {
-        console.warn("Firebase auth check timed out. Forcing UI release.");
-        setIsLoading(false);
-      }
-    }, 5000); // 5 second safety net
+      console.warn("Connection safety timeout reached. Releasing UI.");
+      setIsLoading(false);
+    }, 4000); // 4 seconds
     
     return () => clearTimeout(timeout);
   }, [isLoading]);
@@ -69,7 +69,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               role: userData.role || 'user'
             });
           } else {
-            // Document doesn't exist yet, but we have the auth user
             setInternalCurrentUser({
               id: firebaseUser.uid,
               email: firebaseUser.email!,
