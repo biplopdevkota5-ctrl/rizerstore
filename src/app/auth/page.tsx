@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Gamepad2, Lock, Mail, User as UserIcon, Loader2 } from "lucide-react";
+import { Gamepad2, Lock, Mail, User as UserIcon, Loader2, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 function AuthContent() {
@@ -47,7 +47,6 @@ function AuthContent() {
     try {
       await signInWithEmailAndPassword(auth, email, password);
       toast({ title: "Welcome Back!" });
-      // Redirect happens via useEffect
     } catch (error: any) {
       toast({ 
         title: "Login Failed", 
@@ -80,7 +79,6 @@ function AuthContent() {
 
       await setDoc(doc(db, "users", user.uid), newUserProfile);
       toast({ title: "Success!", description: "Account created." });
-      // Redirect happens via useEffect
     } catch (error: any) {
       toast({ 
         title: "Signup Failed", 
@@ -91,11 +89,17 @@ function AuthContent() {
     }
   };
 
-  if (isContextLoading && !currentUser) {
+  if (isContextLoading || (currentUser && !isLoading)) {
     return (
-      <div className="container min-h-[60vh] flex flex-col items-center justify-center gap-4">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="text-muted-foreground animate-pulse">Entering Secure Gateway...</p>
+      <div className="container min-h-[70vh] flex flex-col items-center justify-center gap-6">
+        <div className="relative">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+          <Sparkles className="absolute -top-1 -right-1 h-5 w-5 text-primary animate-pulse" />
+        </div>
+        <div className="text-center space-y-2">
+          <p className="text-xl font-headline font-bold text-primary animate-pulse">Initializing Interface...</p>
+          <p className="text-sm text-muted-foreground">Synchronizing your profile and digital wallet</p>
+        </div>
       </div>
     );
   }
