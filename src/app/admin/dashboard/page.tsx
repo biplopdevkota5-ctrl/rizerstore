@@ -30,7 +30,9 @@ import {
   X,
   Eye,
   Ticket,
-  Maximize2
+  Maximize2,
+  Upload,
+  Image as ImageIcon
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
@@ -105,6 +107,17 @@ export default function AdminDashboard() {
       </div>
     );
   }
+
+  const handleProductImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setNewProductImg(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleApproveFund = (reqId: string) => {
     const allRequests = db.getFundRequests();
@@ -208,28 +221,28 @@ export default function AdminDashboard() {
     <div className="container mx-auto px-4 py-12">
       <div className="flex flex-col gap-8">
         <div className="flex items-center justify-between">
-          <h1 className="text-4xl font-bold font-headline">Admin <span className="text-primary">Console</span></h1>
-          <Button variant="outline" className="border-white/10" onClick={() => router.push('/')}>Exit to Store</Button>
+          <h1 className="text-2xl md:text-4xl font-bold font-headline">Admin <span className="text-primary">Console</span></h1>
+          <Button variant="outline" size="sm" className="border-white/10" onClick={() => router.push('/')}>Exit</Button>
         </div>
 
         <Tabs defaultValue="funds" className="w-full">
           <TabsList className="grid grid-cols-2 md:grid-cols-6 h-auto gap-2 bg-transparent mb-8">
-            <TabsTrigger value="funds" className="bg-muted/50 data-[state=active]:bg-primary h-12 gap-2">
+            <TabsTrigger value="funds" className="bg-muted/50 data-[state=active]:bg-primary h-12 gap-2 text-xs md:text-sm">
               <Wallet className="h-4 w-4" /> Funds
             </TabsTrigger>
-            <TabsTrigger value="products" className="bg-muted/50 data-[state=active]:bg-primary h-12 gap-2">
+            <TabsTrigger value="products" className="bg-muted/50 data-[state=active]:bg-primary h-12 gap-2 text-xs md:text-sm">
               <Package className="h-4 w-4" /> Products
             </TabsTrigger>
-            <TabsTrigger value="promos" className="bg-muted/50 data-[state=active]:bg-primary h-12 gap-2">
+            <TabsTrigger value="promos" className="bg-muted/50 data-[state=active]:bg-primary h-12 gap-2 text-xs md:text-sm">
               <Ticket className="h-4 w-4" /> Promos
             </TabsTrigger>
-            <TabsTrigger value="orders" className="bg-muted/50 data-[state=active]:bg-primary h-12 gap-2">
+            <TabsTrigger value="orders" className="bg-muted/50 data-[state=active]:bg-primary h-12 gap-2 text-xs md:text-sm">
               <ShoppingBag className="h-4 w-4" /> Orders
             </TabsTrigger>
-            <TabsTrigger value="users" className="bg-muted/50 data-[state=active]:bg-primary h-12 gap-2">
+            <TabsTrigger value="users" className="bg-muted/50 data-[state=active]:bg-primary h-12 gap-2 text-xs md:text-sm">
               <Users className="h-4 w-4" /> Users
             </TabsTrigger>
-            <TabsTrigger value="ann" className="bg-muted/50 data-[state=active]:bg-primary h-12 gap-2">
+            <TabsTrigger value="ann" className="bg-muted/50 data-[state=active]:bg-primary h-12 gap-2 text-xs md:text-sm">
               <Megaphone className="h-4 w-4" /> News
             </TabsTrigger>
           </TabsList>
@@ -237,17 +250,17 @@ export default function AdminDashboard() {
           <TabsContent value="funds">
             <Card className="glass-card border-white/5">
               <CardHeader>
-                <CardTitle>Fund Requests Management</CardTitle>
-                <CardDescription>Approve or reject user deposit requests after verifying proof.</CardDescription>
+                <CardTitle>Fund Requests</CardTitle>
+                <CardDescription>Approve or reject deposit requests.</CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow className="border-white/5">
                       <TableHead>User</TableHead>
                       <TableHead>Amount</TableHead>
-                      <TableHead>Method</TableHead>
-                      <TableHead>Proof Image</TableHead>
+                      <TableHead className="hidden md:table-cell">Method</TableHead>
+                      <TableHead>Proof</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
@@ -256,36 +269,37 @@ export default function AdminDashboard() {
                     {fundRequests.length > 0 ? (
                       fundRequests.sort((a,b) => b.createdAt - a.createdAt).map((req) => (
                         <TableRow key={req.id} className="border-white/5">
-                          <TableCell className="font-bold">{req.username}</TableCell>
-                          <TableCell className="text-primary font-bold">Rs. {req.amount}</TableCell>
-                          <TableCell>{req.method}</TableCell>
+                          <TableCell className="font-bold text-xs md:text-sm">{req.username}</TableCell>
+                          <TableCell className="text-primary font-bold text-xs md:text-sm">Rs. {req.amount}</TableCell>
+                          <TableCell className="hidden md:table-cell">{req.method}</TableCell>
                           <TableCell>
                             <div 
-                              className="group relative h-12 w-20 rounded-md overflow-hidden border border-white/10 cursor-pointer hover:border-primary transition-all"
+                              className="group relative h-10 w-16 rounded overflow-hidden border border-white/10 cursor-pointer hover:border-primary transition-all"
                               onClick={() => setViewingProof(req.proofImage)}
                             >
                               <img src={req.proofImage} alt="Proof" className="object-cover w-full h-full opacity-80 group-hover:opacity-100 transition-opacity" />
                               <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <Maximize2 className="h-4 w-4 text-white" />
+                                <Maximize2 className="h-3 w-3 text-white" />
                               </div>
                             </div>
                           </TableCell>
                           <TableCell>
-                            <Badge className={
+                            <Badge className={cn(
+                              "text-[10px] md:text-xs",
                               req.status === 'approved' ? 'bg-green-500/20 text-green-500' :
                               req.status === 'rejected' ? 'bg-destructive/20 text-destructive' :
                               'bg-yellow-500/20 text-yellow-500'
-                            }>
+                            )}>
                               {req.status.toUpperCase()}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-right">
                             {req.status === 'pending' && (
-                              <div className="flex justify-end gap-2">
-                                <Button size="sm" variant="ghost" className="text-green-500 hover:bg-green-500/20" onClick={() => handleApproveFund(req.id)}>
+                              <div className="flex justify-end gap-1">
+                                <Button size="icon" variant="ghost" className="h-8 w-8 text-green-500 hover:bg-green-500/20" onClick={() => handleApproveFund(req.id)}>
                                   <Check className="h-4 w-4" />
                                 </Button>
-                                <Button size="sm" variant="ghost" className="text-destructive hover:bg-destructive/20" onClick={() => handleRejectFund(req.id)}>
+                                <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:bg-destructive/20" onClick={() => handleRejectFund(req.id)}>
                                   <X className="h-4 w-4" />
                                 </Button>
                               </div>
@@ -320,14 +334,38 @@ export default function AdminDashboard() {
                     <Input type="number" value={newProductPrice} onChange={(e) => setNewProductPrice(e.target.value)} required placeholder="500" className="bg-muted/50" />
                   </div>
                   <div className="space-y-2">
-                    <Label>Image URL (Optional)</Label>
-                    <Input value={newProductImg} onChange={(e) => setNewProductImg(e.target.value)} placeholder="https://..." className="bg-muted/50" />
+                    <Label>Product Image (Device Upload)</Label>
+                    <div 
+                      className="h-10 border border-input rounded-md bg-muted/50 flex items-center justify-center cursor-pointer hover:bg-muted transition-colors relative"
+                      onClick={() => document.getElementById('prod-img-upload')?.click()}
+                    >
+                      {newProductImg ? (
+                        <div className="flex items-center gap-2 px-3 w-full">
+                          <ImageIcon className="h-4 w-4 text-primary" />
+                          <span className="text-xs truncate">Image Loaded</span>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6 ml-auto" 
+                            onClick={(e) => { e.stopPropagation(); setNewProductImg(''); }}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <Upload className="h-4 w-4" />
+                          <span className="text-xs">Select File</span>
+                        </div>
+                      )}
+                      <input id="prod-img-upload" type="file" accept="image/*" className="hidden" onChange={handleProductImageUpload} />
+                    </div>
                   </div>
                   <div className="space-y-2">
-                    <Label>Tag (NEW/HOT)</Label>
+                    <Label>Tag (Optional)</Label>
                     <Input value={newProductTag} onChange={(e) => setNewProductTag(e.target.value)} placeholder="HOT" className="bg-muted/50" />
                   </div>
-                  <Button type="submit" className="lg:col-span-4 neon-glow">
+                  <Button type="submit" className="lg:col-span-4 neon-glow font-bold">
                     <Plus className="h-4 w-4 mr-2" /> Create Product
                   </Button>
                 </form>
@@ -336,16 +374,16 @@ export default function AdminDashboard() {
 
             <Card className="glass-card border-white/5">
               <CardHeader>
-                <CardTitle>Manage Catalog</CardTitle>
+                <CardTitle>Catalog</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow className="border-white/5">
-                      <TableHead>Image</TableHead>
+                      <TableHead>Img</TableHead>
                       <TableHead>Name</TableHead>
                       <TableHead>Price</TableHead>
-                      <TableHead>Tag</TableHead>
+                      <TableHead className="hidden md:table-cell">Tag</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -357,11 +395,11 @@ export default function AdminDashboard() {
                             <img src={p.imageUrl} alt={p.name} className="object-cover w-full h-full" />
                           </div>
                         </TableCell>
-                        <TableCell className="font-bold">{p.name}</TableCell>
-                        <TableCell>Rs. {p.price}</TableCell>
-                        <TableCell>{p.tag ? <Badge>{p.tag}</Badge> : '-'}</TableCell>
+                        <TableCell className="font-bold text-xs md:text-sm">{p.name}</TableCell>
+                        <TableCell className="text-xs md:text-sm">Rs. {p.price}</TableCell>
+                        <TableCell className="hidden md:table-cell">{p.tag ? <Badge className="text-[10px]">{p.tag}</Badge> : '-'}</TableCell>
                         <TableCell className="text-right">
-                           <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDeleteProduct(p.id)}>
+                           <Button variant="ghost" size="icon" className="text-destructive h-8 w-8" onClick={() => handleDeleteProduct(p.id)}>
                              <Trash2 className="h-4 w-4" />
                            </Button>
                         </TableCell>
@@ -376,8 +414,8 @@ export default function AdminDashboard() {
           <TabsContent value="promos" className="space-y-8">
             <Card className="glass-card border-white/5">
               <CardHeader>
-                <CardTitle>Generate Promo Code</CardTitle>
-                <CardDescription>Create discounts for users with limits and expiry.</CardDescription>
+                <CardTitle>Promo Codes</CardTitle>
+                <CardDescription>Custom limits and expiry dates.</CardDescription>
               </CardHeader>
               <CardContent>
                  <form onSubmit={handleAddPromo} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
@@ -390,14 +428,14 @@ export default function AdminDashboard() {
                       <Input type="number" value={newPromoDiscount} onChange={(e) => setNewPromoDiscount(e.target.value)} required placeholder="50" className="bg-muted/50" />
                     </div>
                     <div className="space-y-2">
-                      <Label>Usage Limit (Optional)</Label>
-                      <Input type="number" value={newPromoLimit} onChange={(e) => setNewPromoLimit(e.target.value)} placeholder="Forever if empty" className="bg-muted/50" />
+                      <Label>Usage Limit</Label>
+                      <Input type="number" value={newPromoLimit} onChange={(e) => setNewPromoLimit(e.target.value)} placeholder="Unlimited if empty" className="bg-muted/50" />
                     </div>
                     <div className="space-y-2">
-                      <Label>Expiry Date (Optional)</Label>
+                      <Label>Expiry Date</Label>
                       <Input type="date" value={newPromoExpiry} onChange={(e) => setNewPromoExpiry(e.target.value)} className="bg-muted/50" />
                     </div>
-                    <Button type="submit" className="lg:col-span-4 neon-glow">
+                    <Button type="submit" className="lg:col-span-4 neon-glow font-bold">
                       <Plus className="h-4 w-4 mr-2" /> Activate Promo
                     </Button>
                  </form>
@@ -406,16 +444,16 @@ export default function AdminDashboard() {
 
             <Card className="glass-card border-white/5">
               <CardHeader>
-                <CardTitle>Active Promos</CardTitle>
+                <CardTitle>Management</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow className="border-white/5">
                       <TableHead>Code</TableHead>
-                      <TableHead>Discount</TableHead>
+                      <TableHead>Off</TableHead>
                       <TableHead>Used</TableHead>
-                      <TableHead>Limit</TableHead>
+                      <TableHead className="hidden md:table-cell">Limit</TableHead>
                       <TableHead>Expiry</TableHead>
                       <TableHead className="text-right">Action</TableHead>
                     </TableRow>
@@ -423,13 +461,13 @@ export default function AdminDashboard() {
                   <TableBody>
                     {promoCodes.map((pr) => (
                       <TableRow key={pr.id} className="border-white/5">
-                        <TableCell className="font-bold text-primary">{pr.code}</TableCell>
-                        <TableCell>Rs. {pr.discountAmount}</TableCell>
-                        <TableCell>{pr.usedCount}</TableCell>
-                        <TableCell>{pr.usageLimit || 'Unlimited'}</TableCell>
-                        <TableCell>{pr.expiryDate ? new Date(pr.expiryDate).toLocaleDateString() : 'Forever'}</TableCell>
+                        <TableCell className="font-bold text-primary text-xs md:text-sm">{pr.code}</TableCell>
+                        <TableCell className="text-xs md:text-sm">Rs. {pr.discountAmount}</TableCell>
+                        <TableCell className="text-xs md:text-sm">{pr.usedCount}</TableCell>
+                        <TableCell className="hidden md:table-cell text-xs md:text-sm">{pr.usageLimit || '∞'}</TableCell>
+                        <TableCell className="text-xs md:text-sm">{pr.expiryDate ? new Date(pr.expiryDate).toLocaleDateString() : 'Forever'}</TableCell>
                         <TableCell className="text-right">
-                          <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDeletePromo(pr.id)}>
+                          <Button variant="ghost" size="icon" className="text-destructive h-8 w-8" onClick={() => handleDeletePromo(pr.id)}>
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </TableCell>
@@ -447,34 +485,31 @@ export default function AdminDashboard() {
           <TabsContent value="orders">
              <Card className="glass-card border-white/5">
               <CardHeader>
-                <CardTitle>All Purchases</CardTitle>
+                <CardTitle>Global Orders</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow className="border-white/5">
-                      <TableHead>Order ID</TableHead>
-                      <TableHead>Buyer</TableHead>
+                      <TableHead>Order</TableHead>
+                      <TableHead>User</TableHead>
                       <TableHead>Product</TableHead>
-                      <TableHead>Final Price</TableHead>
-                      <TableHead>Contact</TableHead>
-                      <TableHead>Date</TableHead>
+                      <TableHead>Price</TableHead>
+                      <TableHead className="hidden lg:table-cell">Contact</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {purchases.sort((a,b) => b.createdAt - a.createdAt).map((pur) => (
                       <TableRow key={pur.id} className="border-white/5">
-                        <TableCell className="font-mono text-xs">#{pur.id}</TableCell>
-                        <TableCell className="font-bold">{pur.username}</TableCell>
-                        <TableCell>{pur.productName}</TableCell>
-                        <TableCell className="text-primary font-bold">
+                        <TableCell className="font-mono text-[10px]">#{pur.id}</TableCell>
+                        <TableCell className="font-bold text-xs md:text-sm">{pur.username}</TableCell>
+                        <TableCell className="text-xs md:text-sm">{pur.productName}</TableCell>
+                        <TableCell className="text-primary font-bold text-xs md:text-sm">
                           Rs. {pur.price}
-                          {pur.discountApplied && <span className="text-[10px] block text-green-500">-Rs.{pur.discountApplied} off</span>}
                         </TableCell>
-                        <TableCell className="text-xs">
-                          <Badge variant="outline">{pur.contactMethod}</Badge> {pur.contactId}
+                        <TableCell className="hidden lg:table-cell text-[10px]">
+                          <Badge variant="outline" className="mr-1">{pur.contactMethod}</Badge> {pur.contactId}
                         </TableCell>
-                        <TableCell className="text-xs text-muted-foreground">{new Date(pur.createdAt).toLocaleDateString()}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -488,12 +523,12 @@ export default function AdminDashboard() {
               <CardHeader>
                 <CardTitle>User Directory</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow className="border-white/5">
-                      <TableHead>Username</TableHead>
-                      <TableHead>Email</TableHead>
+                      <TableHead>User</TableHead>
+                      <TableHead className="hidden md:table-cell">Email</TableHead>
                       <TableHead>Balance</TableHead>
                       <TableHead>Role</TableHead>
                     </TableRow>
@@ -501,11 +536,11 @@ export default function AdminDashboard() {
                   <TableBody>
                     {db.getUsers().map((u) => (
                       <TableRow key={u.id} className="border-white/5">
-                        <TableCell className="font-bold">{u.username}</TableCell>
-                        <TableCell>{u.email}</TableCell>
-                        <TableCell className="text-primary font-bold">Rs. {u.balance.toLocaleString()}</TableCell>
+                        <TableCell className="font-bold text-xs md:text-sm">{u.username}</TableCell>
+                        <TableCell className="hidden md:table-cell text-xs">{u.email}</TableCell>
+                        <TableCell className="text-primary font-bold text-xs md:text-sm">Rs. {u.balance.toLocaleString()}</TableCell>
                         <TableCell>
-                          <Badge variant={u.role === 'admin' ? 'default' : 'secondary'}>
+                          <Badge variant={u.role === 'admin' ? 'default' : 'secondary'} className="text-[10px]">
                             {u.role.toUpperCase()}
                           </Badge>
                         </TableCell>
@@ -520,23 +555,23 @@ export default function AdminDashboard() {
           <TabsContent value="ann">
              <Card className="glass-card border-white/5">
               <CardHeader>
-                <CardTitle>Broadcast Updates</CardTitle>
+                <CardTitle>Announcements</CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
                 <form onSubmit={handlePostAnn} className="space-y-4">
                   <div className="space-y-2">
-                    <Label>New Announcement</Label>
-                    <Input value={newAnn} onChange={(e) => setNewAnn(e.target.value)} required placeholder="Flash Sale starts tonight at 8 PM!" className="bg-muted/50" />
+                    <Label>Content</Label>
+                    <Input value={newAnn} onChange={(e) => setNewAnn(e.target.value)} required placeholder="Flash Sale starts tonight!" className="bg-muted/50" />
                   </div>
-                  <Button type="submit" className="neon-glow">Post Announcement</Button>
+                  <Button type="submit" className="neon-glow font-bold w-full md:w-auto">Post Update</Button>
                 </form>
 
                 <div className="space-y-3">
-                  <h3 className="font-bold">Recent News</h3>
+                  <h3 className="font-bold text-sm">History</h3>
                   {announcements.map((a) => (
-                    <div key={a.id} className="p-4 rounded-xl bg-muted/30 border border-white/5 flex justify-between items-center">
-                       <p>{a.content}</p>
-                       <span className="text-xs text-muted-foreground">{new Date(a.createdAt).toLocaleDateString()}</span>
+                    <div key={a.id} className="p-3 rounded-xl bg-muted/30 border border-white/5 flex justify-between items-center text-xs md:text-sm">
+                       <p className="line-clamp-2">{a.content}</p>
+                       <span className="text-[10px] text-muted-foreground ml-4 shrink-0">{new Date(a.createdAt).toLocaleDateString()}</span>
                     </div>
                   ))}
                 </div>
@@ -550,7 +585,7 @@ export default function AdminDashboard() {
       <Dialog open={!!viewingProof} onOpenChange={(open) => !open && setViewingProof(null)}>
         <DialogContent className="max-w-3xl glass-card border-white/10 p-4">
           <DialogHeader>
-            <DialogTitle>Transaction Proof Verification</DialogTitle>
+            <DialogTitle>Proof Verification</DialogTitle>
           </DialogHeader>
           <div className="mt-4 flex flex-col items-center gap-4">
             <div className="relative w-full aspect-auto min-h-[40vh] bg-black/40 rounded-xl overflow-hidden flex items-center justify-center p-2 border border-white/5">
@@ -561,11 +596,11 @@ export default function AdminDashboard() {
               />
             </div>
             <div className="flex gap-4 w-full">
-              <Button variant="outline" className="flex-1 border-white/10" onClick={() => window.open(viewingProof || '', '_blank')}>
-                Open in New Tab
+              <Button variant="outline" className="flex-1 border-white/10 text-xs" onClick={() => window.open(viewingProof || '', '_blank')}>
+                Original
               </Button>
-              <Button className="flex-1" onClick={() => setViewingProof(null)}>
-                Close Preview
+              <Button className="flex-1 text-xs font-bold" onClick={() => setViewingProof(null)}>
+                Close
               </Button>
             </div>
           </div>
