@@ -1,12 +1,16 @@
 
 "use client";
 
-import { useState, Suspense, useEffect } from "react";
+import { useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAppContext } from "@/lib/context";
-import { dbService } from "@/lib/db";
-import { db } from "@/lib/firebase";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { db, auth } from "@/lib/firebase";
+import { 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword,
+  updateProfile
+} from "firebase/auth";
+import { doc, setDoc, getDoc } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,19 +40,10 @@ function AuthContent() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Hardcoded Admin Bypass works even without Firebase for initial setup
-    if (email === 'admin@rizer.store' && password === '090102030405') {
-      const adminUser = { id: 'admin-id', username: 'Admin', email: 'admin@rizer.store', balance: 999999, role: 'admin' as const };
-      setCurrentUser(adminUser);
-      toast({ title: "Admin Access Granted", description: "Redirecting to Dashboard..." });
-      router.push('/admin/dashboard');
-      return;
-    }
-
     if (!isFirebaseConfigured()) {
       toast({ 
         title: "Configuration Required", 
-        description: "Firebase is not configured yet. Please update src/lib/firebase.ts with your credentials.", 
+        description: "Please update src/lib/firebase.ts with your real project keys.", 
         variant: "destructive" 
       });
       return;
@@ -57,33 +52,36 @@ function AuthContent() {
     setIsLoading(true);
     
     try {
-      const usersRef = collection(db, "users");
-      // Search by email first
-      const qEmail = query(usersRef, where("email", "==", email), where("password", "==", password));
-      const snapEmail = await getDocs(qEmail);
-      
-      let userDoc = snapEmail.empty ? null : snapEmail.docs[0];
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
 
-      // If not found by email, try searching by username
-      if (!userDoc) {
-        const qUser = query(usersRef, where("username", "==", email), where("password", "==", password));
-        const snapUser = await getDocs(qUser);
-        if (!snapUser.empty) {
-          userDoc = snapUser.docs[0];
+      // Fetch additional data from Firestore
+      const userDoc = await getDoc(doc(db, "users", user.uid));
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        setCurrentUser({
+          id: user.uid,
+          email: user.email!,
+          username: userData.username || user.displayName || 'User',
+          balance: userData.balance || 0,
+          role: userData.role || 'user'
+        });
+        
+        toast({ title: "Login Successful", description: `Welcome back, ${userData.username || 'Gamer'}!` });
+        
+        if (userData.role === 'admin') {
+          router.push('/admin/dashboard');
+        } else {
+          router.push('/');
         }
-      }
-
-      if (userDoc) {
-        const user = userDoc.data() as any;
-        setCurrentUser(user);
-        toast({ title: "Login Successful", description: `Welcome back, ${user.username}!` });
-        router.push('/');
-      } else {
-        toast({ title: "Invalid Credentials", description: "Check your email/username and password.", variant: "destructive" });
       }
     } catch (error: any) {
       console.error("Login Error:", error);
-      toast({ title: "Login Failed", description: error.message || "Connection error to database.", variant: "destructive" });
+      let message = "Invalid email or password.";
+      if (error.code === 'auth/user-not-found') message = "Account not found.";
+      if (error.code === 'auth/wrong-password') message = "Incorrect password.";
+      
+      toast({ title: "Login Failed", description: message, variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
@@ -91,10 +89,11 @@ function AuthContent() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    
     if (!isFirebaseConfigured()) {
       toast({ 
         title: "Configuration Required", 
-        description: "Firebase is not configured yet. Please update src/lib/firebase.ts with your credentials.", 
+        description: "Please update src/lib/firebase.ts with your real project keys.", 
         variant: "destructive" 
       });
       return;
@@ -108,41 +107,42 @@ function AuthContent() {
     setIsLoading(true);
 
     try {
-      const usersRef = collection(db, "users");
-      const qUser = query(usersRef, where("username", "==", username));
-      const qEmail = query(usersRef, where("email", "==", email));
-      
-      const [uSnap, eSnap] = await Promise.all([getDocs(qUser), getDocs(qEmail)]);
+      // 1. Create Auth User
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
 
-      if (!uSnap.empty) {
-        toast({ title: "Signup Failed", description: "Username is already taken.", variant: "destructive" });
-        setIsLoading(false);
-        return;
-      }
-      if (!eSnap.empty) {
-        toast({ title: "Signup Failed", description: "Email is already registered.", variant: "destructive" });
-        setIsLoading(false);
-        return;
-      }
+      // 2. Update Display Name
+      await updateProfile(user, { displayName: username });
 
-      const userId = Math.random().toString(36).substring(2, 10);
-      const newUser = {
-        id: userId,
+      // 3. Create Firestore Profile
+      const newUserProfile = {
+        id: user.uid,
         username,
         email,
-        password,
         balance: 0,
-        role: 'user' as const
+        role: 'user',
+        createdAt: Date.now()
       };
 
-      await dbService.saveUser(newUser);
-      setCurrentUser(newUser);
+      await setDoc(doc(db, "users", user.uid), newUserProfile);
+      
+      setCurrentUser({
+        id: user.uid,
+        username,
+        email,
+        balance: 0,
+        role: 'user'
+      });
 
       toast({ title: "Account Created!", description: "Welcome to Rizer Store community." });
       router.push('/');
     } catch (error: any) {
       console.error("Signup Error:", error);
-      toast({ title: "Signup Error", description: error.message || "Database connection failed.", variant: "destructive" });
+      let message = "Could not create account.";
+      if (error.code === 'auth/email-already-in-use') message = "Email is already registered.";
+      if (error.code === 'auth/weak-password') message = "Password should be at least 6 characters.";
+      
+      toast({ title: "Signup Error", description: message, variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
@@ -156,7 +156,7 @@ function AuthContent() {
             <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
             <div className="text-xs">
               <p className="font-bold mb-1">Firebase Configuration Missing</p>
-              <p>You need to update <strong>src/lib/firebase.ts</strong> with your real project keys for database features to work.</p>
+              <p>You need to update <strong>src/lib/firebase.ts</strong> with your real project keys for authentication to work.</p>
             </div>
           </div>
         )}
@@ -179,14 +179,14 @@ function AuthContent() {
               <TabsContent value="login">
                 <form onSubmit={handleLogin} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="login-email">Email or Username</Label>
+                    <Label htmlFor="login-email">Email Address</Label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input 
                         id="login-email" 
-                        placeholder="Enter email or username" 
+                        placeholder="gamer@example.com" 
                         className="pl-10 bg-muted/30" 
-                        type="text" 
+                        type="email" 
                         required 
                         value={email} 
                         onChange={(e) => setEmail(e.target.value)} 
@@ -235,7 +235,7 @@ function AuthContent() {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="signup-email">Email</Label>
+                    <Label htmlFor="signup-email">Email Address</Label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input 

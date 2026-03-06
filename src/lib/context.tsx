@@ -3,7 +3,8 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, Product, FundRequest, Purchase, Announcement, PromoCode } from './types';
-import { db } from './firebase';
+import { db, auth } from './firebase';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { collection, onSnapshot, query, orderBy, doc, getDoc } from 'firebase/firestore';
 
 interface AppContextType {
@@ -35,58 +36,51 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return config && config.apiKey && !config.apiKey.includes("YOUR_API_KEY");
   };
 
+  // 1. Listen for Auth State Changes
   useEffect(() => {
-    const storedSession = localStorage.getItem('rizer_session');
-    if (storedSession) {
-      try {
-        const sessionData = JSON.parse(storedSession);
-        
-        // Admin recovery is always handled locally first
-        if (sessionData.role === 'admin' && sessionData.id === 'admin-id') {
-          setInternalCurrentUser(sessionData);
-          setIsLoading(false);
-          return;
-        }
+    if (!isFirebaseConfigured()) {
+      setIsLoading(false);
+      return;
+    }
 
-        // If Firebase is configured, verify and sync user data from cloud
-        if (isFirebaseConfigured()) {
-          const userRef = doc(db, 'users', sessionData.id);
-          const unsubUser = onSnapshot(userRef, (docSnap) => {
-            if (docSnap.exists()) {
-              const userData = docSnap.data() as User;
-              setInternalCurrentUser(userData);
-              localStorage.setItem('rizer_session', JSON.stringify(userData));
-            } else {
-              // User deleted from DB or invalid session, clear it
-              localStorage.removeItem('rizer_session');
-              setInternalCurrentUser(null);
-            }
-            setIsLoading(false);
-          }, (error) => {
-            console.error("User Sync Error:", error);
-            // On error, keep the local session but stop loading
-            setInternalCurrentUser(sessionData);
-            setIsLoading(false);
-          });
-          return () => unsubUser();
-        } else {
-          // If not configured, just use local data (useful for preview)
-          setInternalCurrentUser(sessionData);
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        // User is logged in, fetch their Firestore profile
+        const userRef = doc(db, 'users', firebaseUser.uid);
+        
+        // Use real-time listener for the user profile (to sync balance)
+        const unsubProfile = onSnapshot(userRef, (docSnap) => {
+          if (docSnap.exists()) {
+            const userData = docSnap.data() as User;
+            setInternalCurrentUser({
+              id: firebaseUser.uid,
+              email: firebaseUser.email!,
+              username: userData.username,
+              balance: userData.balance || 0,
+              role: userData.role || 'user'
+            });
+          }
           setIsLoading(false);
-        }
-      } catch (e) {
-        console.error("Session recovery error:", e);
+        }, (err) => {
+          console.error("Profile sync error:", err);
+          setIsLoading(false);
+        });
+
+        return () => unsubProfile();
+      } else {
+        // User is logged out
+        setInternalCurrentUser(null);
         setIsLoading(false);
       }
-    } else {
-      setIsLoading(false);
-    }
+    });
+
+    return () => unsubscribe();
   }, []);
 
+  // 2. Listen for Global Collections
   useEffect(() => {
     if (!isFirebaseConfigured()) return;
 
-    // Real-time Listeners for Collections
     const unsubProducts = onSnapshot(query(collection(db, 'products'), orderBy('createdAt', 'desc')), (snap) => {
       setProducts(snap.docs.map(doc => doc.data() as Product));
     }, (err) => console.error("Products error:", err));
@@ -117,20 +111,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const syncData = () => {
-    // Handled by onSnapshot real-time sync
+    // Handled by onSnapshot
   };
 
   const setCurrentUser = (user: User | null) => {
-    if (user) {
-      localStorage.setItem('rizer_session', JSON.stringify(user));
-    } else {
-      localStorage.removeItem('rizer_session');
-    }
     setInternalCurrentUser(user);
   };
 
-  const logout = () => {
-    localStorage.removeItem('rizer_session');
+  const logout = async () => {
+    await signOut(auth);
     setInternalCurrentUser(null);
     window.location.href = '/';
   };
