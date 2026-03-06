@@ -32,7 +32,7 @@ function AuthContent() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  // Redirect if already logged in
+  // Auto-redirect if user is already authenticated
   useEffect(() => {
     if (!isContextLoading && currentUser) {
       router.push('/');
@@ -42,7 +42,7 @@ function AuthContent() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isFirebaseConfigured || !auth) {
-      toast({ title: "Configuration Missing", description: "Firebase is not initialized.", variant: "destructive" });
+      toast({ title: "Configuration Error", description: "Firebase is not initialized.", variant: "destructive" });
       return;
     }
     
@@ -50,15 +50,14 @@ function AuthContent() {
     
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      toast({ title: "Welcome Back!", description: "You have successfully logged in." });
-      router.push('/');
+      toast({ title: "Welcome Back!", description: "Log in successful." });
+      // Redirection handled by useEffect
     } catch (error: any) {
       let message = "Invalid email or password.";
-      if (error.code === 'auth/invalid-credential') message = "Incorrect login credentials.";
+      if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') message = "Incorrect credentials.";
       if (error.code === 'auth/user-not-found') message = "Account not found.";
       
       toast({ title: "Login Failed", description: message, variant: "destructive" });
-    } finally {
       setIsLoading(false);
     }
   };
@@ -66,12 +65,12 @@ function AuthContent() {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isFirebaseConfigured || !auth || !db) {
-      toast({ title: "Configuration Missing", description: "Firebase is not initialized.", variant: "destructive" });
+      toast({ title: "Configuration Error", description: "Firebase is not initialized.", variant: "destructive" });
       return;
     }
     
-    if (username.length < 3) {
-      toast({ title: "Username too short", description: "Minimum 3 characters required.", variant: "destructive" });
+    if (username.trim().length < 3) {
+      toast({ title: "Username too short", description: "Minimum 3 characters.", variant: "destructive" });
       return;
     }
 
@@ -83,10 +82,11 @@ function AuthContent() {
 
       await updateProfile(user, { displayName: username });
 
+      // Create initial Firestore profile
       const newUserProfile = {
         id: user.uid,
-        username,
-        email,
+        username: username.trim(),
+        email: email.trim(),
         balance: 0,
         role: 'user',
         createdAt: Date.now()
@@ -94,28 +94,28 @@ function AuthContent() {
 
       await setDoc(doc(db, "users", user.uid), newUserProfile);
       
-      toast({ title: "Welcome to Rizer!", description: "Your account is ready." });
-      router.push('/');
+      toast({ title: "Success!", description: "Account created successfully." });
+      // Redirection handled by useEffect
     } catch (error: any) {
       let message = "Could not create account.";
       if (error.code === 'auth/email-already-in-use') {
-        message = "This email is already in use.";
+        message = "Email is already registered. Please login.";
         setActiveTab('login');
       } else if (error.code === 'auth/weak-password') {
-        message = "Password must be at least 6 characters.";
+        message = "Password should be at least 6 characters.";
       }
       
-      toast({ title: "Signup Error", description: message, variant: "destructive" });
-    } finally {
+      toast({ title: "Signup Failed", description: message, variant: "destructive" });
       setIsLoading(false);
     }
   };
 
+  // Prevent flicker during auth check
   if (isContextLoading) {
     return (
-      <div className="container p-20 text-center flex flex-col items-center gap-4">
+      <div className="container min-h-[60vh] flex flex-col items-center justify-center gap-4">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="text-muted-foreground">Checking authentication status...</p>
+        <p className="text-muted-foreground animate-pulse">Initializing Rizer Secure Gateway...</p>
       </div>
     );
   }
@@ -123,8 +123,8 @@ function AuthContent() {
   return (
     <div className="container mx-auto px-4 py-12 md:py-20 flex justify-center items-center">
       <div className="w-full max-w-md space-y-6">
-        <Card className="glass-card border-white/5 neon-glow">
-          <CardHeader className="text-center">
+        <Card className="glass-card border-white/5 neon-glow overflow-hidden">
+          <CardHeader className="text-center pb-2">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary mx-auto mb-4 neon-glow">
               <Gamepad2 className="h-7 w-7 text-white" />
             </div>
@@ -138,7 +138,7 @@ function AuthContent() {
                 <TabsTrigger value="signup" className="data-[state=active]:bg-primary">Sign Up</TabsTrigger>
               </TabsList>
 
-              <TabsContent value="login">
+              <TabsContent value="login" className="mt-0">
                 <form onSubmit={handleLogin} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="login-email">Email Address</Label>
@@ -147,7 +147,7 @@ function AuthContent() {
                       <Input 
                         id="login-email" 
                         placeholder="gamer@example.com" 
-                        className="pl-10 bg-muted/30" 
+                        className="pl-10 bg-muted/30 border-white/5" 
                         type="email" 
                         required 
                         value={email} 
@@ -164,7 +164,7 @@ function AuthContent() {
                         id="login-password" 
                         type="password" 
                         placeholder="••••••••" 
-                        className="pl-10 bg-muted/30" 
+                        className="pl-10 bg-muted/30 border-white/5" 
                         required 
                         value={password} 
                         onChange={(e) => setPassword(e.target.value)} 
@@ -178,7 +178,7 @@ function AuthContent() {
                 </form>
               </TabsContent>
 
-              <TabsContent value="signup">
+              <TabsContent value="signup" className="mt-0">
                 <form onSubmit={handleSignup} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="username">Display Name</Label>
@@ -187,7 +187,7 @@ function AuthContent() {
                       <Input 
                         id="username" 
                         placeholder="SuperGamer" 
-                        className="pl-10 bg-muted/30" 
+                        className="pl-10 bg-muted/30 border-white/5" 
                         required 
                         value={username} 
                         onChange={(e) => setUsername(e.target.value)} 
@@ -203,7 +203,7 @@ function AuthContent() {
                         id="signup-email" 
                         type="email" 
                         placeholder="gamer@example.com" 
-                        className="pl-10 bg-muted/30" 
+                        className="pl-10 bg-muted/30 border-white/5" 
                         required 
                         value={email} 
                         onChange={(e) => setEmail(e.target.value)} 
@@ -219,7 +219,7 @@ function AuthContent() {
                         id="signup-password" 
                         type="password" 
                         placeholder="Minimum 6 characters" 
-                        className="pl-10 bg-muted/30" 
+                        className="pl-10 bg-muted/30 border-white/5" 
                         required 
                         value={password} 
                         onChange={(e) => setPassword(e.target.value)} 
@@ -234,8 +234,8 @@ function AuthContent() {
               </TabsContent>
             </Tabs>
           </CardContent>
-          <CardFooter className="text-center text-[10px] text-muted-foreground uppercase tracking-widest justify-center">
-            Secure Rizer Gateway
+          <CardFooter className="text-center text-[10px] text-muted-foreground uppercase tracking-widest justify-center pb-6">
+            Secure Rizer Store Gateway
           </CardFooter>
         </Card>
       </div>
