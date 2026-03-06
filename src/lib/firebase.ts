@@ -4,23 +4,24 @@ import { getFirestore, Firestore } from "firebase/firestore";
 import { getAuth, Auth } from "firebase/auth";
 
 /**
- * Firebase configuration using the provided project details.
+ * Firebase configuration for rizerstore-e022b.
+ * Replace placeholders with values from your Firebase Console -> Project Settings.
  */
 const firebaseConfig = {
-  apiKey: "AIzaSyD6wv_EuiASof1HfLNeky8Qy3VpTAepprM",
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyD6wv_EuiASof1HfLNeky8Qy3VpTAepprM",
   authDomain: "rizerstore-e022b.firebaseapp.com",
   projectId: "rizerstore-e022b",
   storageBucket: "rizerstore-e022b.firebasestorage.app",
-  messagingSenderId: "561049848687",
-  appId: "1:561049848687:web:9909bfc214a232bc83b69a"
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "561049848687",
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "1:561049848687:web:9909bfc214a232bc83b69a"
 };
 
 let app: FirebaseApp | undefined;
 let db: Firestore | undefined;
 let auth: Auth | undefined;
 
-// Defensive check: Only initialize if the API key is provided
-const isConfigValid = typeof firebaseConfig.apiKey === 'string' && firebaseConfig.apiKey.length > 10;
+// Defensive check: Only initialize if the API key is provided and looks valid
+const isConfigValid = typeof firebaseConfig.apiKey === 'string' && firebaseConfig.apiKey.length > 20;
 
 if (typeof window !== "undefined") {
   try {

@@ -34,7 +34,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const isFirebaseConfigured = !!auth && !!db;
 
-  // 1. Listen for Auth State Changes
+  // 1. Safety Timeout for Loading State
+  // This ensures the app doesn't get stuck on the loader if Firebase takes too long or fails
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (isLoading) {
+        console.warn("Firebase auth check timed out. Forcing UI release.");
+        setIsLoading(false);
+      }
+    }, 5000); // 5 second safety net
+    
+    return () => clearTimeout(timeout);
+  }, [isLoading]);
+
+  // 2. Listen for Auth State Changes
   useEffect(() => {
     if (!isFirebaseConfigured) {
       setIsLoading(false);
@@ -55,6 +68,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               balance: userData.balance || 0,
               role: userData.role || 'user'
             });
+          } else {
+            // Document doesn't exist yet, but we have the auth user
+            setInternalCurrentUser({
+              id: firebaseUser.uid,
+              email: firebaseUser.email!,
+              username: firebaseUser.displayName || 'User',
+              balance: 0,
+              role: 'user'
+            });
           }
           setIsLoading(false);
         }, (err) => {
@@ -72,7 +94,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, [isFirebaseConfigured]);
 
-  // 2. Listen for Global Collections
+  // 3. Listen for Global Collections
   useEffect(() => {
     if (!isFirebaseConfigured) return;
 
