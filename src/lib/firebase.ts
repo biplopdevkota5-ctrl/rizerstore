@@ -5,7 +5,7 @@ import { getAuth, Auth } from "firebase/auth";
 
 /**
  * Firebase configuration using environment variables.
- * These should be set in Netlify Site Settings > Environment Variables.
+ * These must be set in your hosting platform (Netlify, Vercel, etc.)
  */
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "",
@@ -20,16 +20,20 @@ let app: FirebaseApp | undefined;
 let db: Firestore | undefined;
 let auth: Auth | undefined;
 
-// Defensive check: Only initialize if the API key looks valid (not empty or placeholder)
-const isConfigValid = firebaseConfig.apiKey && firebaseConfig.apiKey.length > 5;
+// Defensive check: Only initialize if the API key is provided and looks valid
+const isConfigValid = typeof firebaseConfig.apiKey === 'string' && firebaseConfig.apiKey.length > 10;
 
-if (typeof window !== "undefined" && isConfigValid) {
-  try {
-    app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
-    db = getFirestore(app);
-    auth = getAuth(app);
-  } catch (error) {
-    console.error("Firebase initialization failed:", error);
+if (typeof window !== "undefined") {
+  if (isConfigValid) {
+    try {
+      app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+      db = getFirestore(app);
+      auth = getAuth(app);
+    } catch (error) {
+      console.error("Firebase initialization failed:", error);
+    }
+  } else {
+    console.warn("Firebase API key is missing. Authentication and Database features will be disabled.");
   }
 }
 

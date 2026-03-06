@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Gamepad2, Lock, Mail, User as UserIcon, Loader2, AlertTriangle, ExternalLink } from "lucide-react";
+import { Gamepad2, Lock, Mail, User as UserIcon, Loader2, AlertTriangle, ExternalLink, Settings } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 function AuthContent() {
@@ -131,17 +131,25 @@ function AuthContent() {
     <div className="container mx-auto px-4 py-12 md:py-20 flex justify-center items-center">
       <div className="w-full max-w-md space-y-6">
         {!isFirebaseConfigured && (
-          <Card className="border-primary/50 bg-primary/10 text-primary mb-6 animate-pulse">
-            <CardContent className="p-4 flex flex-col gap-3">
+          <Card className="border-primary/50 bg-primary/10 text-primary mb-6">
+            <CardContent className="p-6 flex flex-col gap-4">
               <div className="flex items-center gap-3">
                 <AlertTriangle className="h-6 w-6 shrink-0" />
-                <p className="font-bold">Setup Required</p>
+                <p className="font-bold text-lg">Netlify Setup Required</p>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Firebase is not configured. Add your API keys in <strong>Netlify Settings &gt; Environment Variables</strong>.
-              </p>
-              <Button size="sm" variant="outline" className="text-xs h-8 gap-2 border-primary/20" onClick={() => window.open('https://console.firebase.google.com/', '_blank')}>
-                Firebase Console <ExternalLink className="h-3 w-3" />
+              <div className="text-sm space-y-3">
+                <p>Firebase is not yet linked. You must add these <strong>Environment Variables</strong> in your Netlify Dashboard:</p>
+                <ul className="list-disc list-inside space-y-1 font-mono text-xs bg-black/20 p-3 rounded border border-primary/20">
+                  <li>NEXT_PUBLIC_FIREBASE_API_KEY</li>
+                  <li>NEXT_PUBLIC_FIREBASE_APP_ID</li>
+                  <li>NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID</li>
+                </ul>
+                <p className="text-xs text-muted-foreground pt-2">
+                  Go to Netlify Dashboard &gt; Site Settings &gt; Environment Variables.
+                </p>
+              </div>
+              <Button size="sm" variant="outline" className="w-full gap-2 border-primary/20" onClick={() => window.open('https://console.firebase.google.com/project/rizerstore-e022b/settings/general', '_blank')}>
+                Find Keys in Firebase <ExternalLink className="h-3 w-3" />
               </Button>
             </CardContent>
           </Card>
