@@ -12,6 +12,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { 
   LayoutDashboard, 
   Users, 
   Wallet, 
@@ -23,7 +29,8 @@ import {
   Check,
   X,
   Eye,
-  Ticket
+  Ticket,
+  Maximize2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
@@ -36,6 +43,7 @@ export default function AdminDashboard() {
 
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
+  const [viewingProof, setViewingProof] = useState<string | null>(null);
 
   // Forms
   const [newProductName, setNewProductName] = useState('');
@@ -239,7 +247,7 @@ export default function AdminDashboard() {
                       <TableHead>User</TableHead>
                       <TableHead>Amount</TableHead>
                       <TableHead>Method</TableHead>
-                      <TableHead>Proof</TableHead>
+                      <TableHead>Proof Image</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
@@ -252,9 +260,15 @@ export default function AdminDashboard() {
                           <TableCell className="text-primary font-bold">Rs. {req.amount}</TableCell>
                           <TableCell>{req.method}</TableCell>
                           <TableCell>
-                            <Button variant="ghost" size="sm" className="gap-2" onClick={() => window.open(req.proofImage, '_blank')}>
-                              <Eye className="h-4 w-4" /> View Image
-                            </Button>
+                            <div 
+                              className="group relative h-12 w-20 rounded-md overflow-hidden border border-white/10 cursor-pointer hover:border-primary transition-all"
+                              onClick={() => setViewingProof(req.proofImage)}
+                            >
+                              <img src={req.proofImage} alt="Proof" className="object-cover w-full h-full opacity-80 group-hover:opacity-100 transition-opacity" />
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Maximize2 className="h-4 w-4 text-white" />
+                              </div>
+                            </div>
                           </TableCell>
                           <TableCell>
                             <Badge className={
@@ -531,6 +545,32 @@ export default function AdminDashboard() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Proof Image Viewer Dialog */}
+      <Dialog open={!!viewingProof} onOpenChange={(open) => !open && setViewingProof(null)}>
+        <DialogContent className="max-w-3xl glass-card border-white/10 p-4">
+          <DialogHeader>
+            <DialogTitle>Transaction Proof Verification</DialogTitle>
+          </DialogHeader>
+          <div className="mt-4 flex flex-col items-center gap-4">
+            <div className="relative w-full aspect-auto min-h-[40vh] bg-black/40 rounded-xl overflow-hidden flex items-center justify-center p-2 border border-white/5">
+              <img 
+                src={viewingProof || ''} 
+                alt="Full Payment Proof" 
+                className="max-w-full max-h-[70vh] object-contain rounded-lg"
+              />
+            </div>
+            <div className="flex gap-4 w-full">
+              <Button variant="outline" className="flex-1 border-white/10" onClick={() => window.open(viewingProof || '', '_blank')}>
+                Open in New Tab
+              </Button>
+              <Button className="flex-1" onClick={() => setViewingProof(null)}>
+                Close Preview
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
