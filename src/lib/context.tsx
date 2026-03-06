@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
@@ -30,7 +29,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [promoCodes, setPromoCodes] = useState<PromoCode[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Auth & Profile Sync - Optimized for Speed
+  // Fast Auth & Profile Sync
   useEffect(() => {
     if (!auth || !db) {
       setIsLoading(false);
@@ -39,7 +38,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
-        // Immediately set a base user to stop global loading spinner and show "Logged In" UI
+        // Instant base user
         setInternalCurrentUser(prev => prev || { 
           id: firebaseUser.uid, 
           email: firebaseUser.email || '', 
@@ -48,7 +47,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           role: 'user' 
         });
         
-        // Then start the live profile sync
         const userRef = doc(db, 'users', firebaseUser.uid);
         const unsubProfile = onSnapshot(userRef, (docSnap) => {
           if (docSnap.exists()) {
@@ -67,7 +65,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribeAuth();
   }, []);
 
-  // Global Data Sync
+  // Real-Time Global Data Sync (Instant updates from database)
   useEffect(() => {
     if (!db) return;
 

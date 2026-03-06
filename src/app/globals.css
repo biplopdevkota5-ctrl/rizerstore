@@ -23,7 +23,7 @@
     --border: 280 15% 15%;
     --input: 280 15% 15%;
     --ring: 275 100% 55%;
-    --radius: 0.75rem;
+    --radius: 1rem;
   }
 }
 
@@ -41,11 +41,11 @@
 }
 
 .neon-glow {
-  box-shadow: 0 0 15px hsla(275, 100%, 55%, 0.3);
+  box-shadow: 0 0 20px hsla(275, 100%, 55%, 0.4);
 }
 
-.neon-glow-blue {
-  box-shadow: 0 0 15px hsla(240, 70%, 56%, 0.3);
+.neon-glow-green {
+  box-shadow: 0 0 20px hsla(142, 70%, 50%, 0.3);
 }
 
 .neon-text {
@@ -53,7 +53,8 @@
 }
 
 .glass-card {
-  @apply bg-card/60 backdrop-blur-md border-white/5;
+  @apply bg-card/60 backdrop-blur-xl border-white/5;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
 }
 
 ::-webkit-scrollbar {
