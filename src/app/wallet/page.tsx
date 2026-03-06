@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -23,7 +22,9 @@ import {
   CheckCircle2,
   XCircle,
   Loader2,
-  Copy
+  Copy,
+  ChevronRight,
+  TrendingUp
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
@@ -111,111 +112,128 @@ export default function WalletPage() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 md:py-16 max-w-7xl">
+    <div className="container mx-auto px-4 py-8 md:py-16 max-w-7xl relative">
+       <div className="scan-line" />
+       
        <div className="flex flex-col gap-10">
           {/* Main Balance Header */}
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 p-8 rounded-[2rem] glass-card border-primary/20 bg-primary/5">
-            <div className="space-y-2">
-              <h1 className="text-3xl md:text-5xl font-bold font-headline">Digital <span className="text-primary neon-text">Wallet</span></h1>
-              <p className="text-muted-foreground">Manage your virtual currency and payments</p>
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 p-10 rounded-[3rem] glass-card border-primary/20 bg-primary/5 relative overflow-hidden">
+            <div className="absolute top-0 right-0 h-40 w-40 bg-primary/20 blur-[100px] -mr-10 -mt-10" />
+            <div className="space-y-3 relative z-10">
+              <Badge className="bg-primary/20 text-primary border-none text-[10px] font-bold uppercase tracking-widest px-4 py-1">Virtual Currency Account</Badge>
+              <h1 className="text-4xl md:text-6xl font-bold font-headline uppercase tracking-tighter">Digital <span className="text-primary neon-text">Vault</span></h1>
+              <p className="text-muted-foreground text-sm max-w-md">Real-time fund management for high-tier gaming assets. Deposits are manually verified by our audit team.</p>
             </div>
-            <div className="flex items-center gap-6 p-6 rounded-3xl bg-black/40 border border-white/5 neon-glow">
-              <div className="h-14 w-14 rounded-2xl bg-primary flex items-center justify-center">
-                <Wallet className="h-7 w-7 text-white" />
+            
+            <div className="flex items-center gap-8 p-8 rounded-[2.5rem] bg-black/40 border border-white/5 neon-glow group transition-transform hover:scale-[1.02]">
+              <div className="h-20 w-20 rounded-3xl bg-primary flex items-center justify-center group-hover:neon-glow transition-all">
+                <Wallet className="h-10 w-10 text-white" />
               </div>
-              <div>
-                <p className="text-[10px] uppercase tracking-[0.2em] text-primary font-bold">Total Balance</p>
-                <p className="text-3xl font-bold font-headline">Rs. {currentUser.balance.toLocaleString()}</p>
+              <div className="space-y-1">
+                <p className="text-[10px] uppercase tracking-[0.3em] text-primary font-bold">Available NPR</p>
+                <p className="text-4xl md:text-5xl font-bold font-headline">Rs. {currentUser.balance.toLocaleString()}</p>
+                <div className="flex items-center gap-2 text-green-500 text-[10px] font-bold">
+                   <TrendingUp className="h-3 w-3" />
+                   SYNCED WITH MARKET
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
              {/* Payment Accounts */}
              <div className="lg:col-span-4 space-y-6">
-                <Card className="glass-card border-white/5 overflow-hidden rounded-[2rem]">
-                   <CardHeader className="bg-primary/5 pb-4">
+                <Card className="glass-card border-white/5 overflow-hidden rounded-[2.5rem]">
+                   <CardHeader className="bg-primary/5 pb-4 border-b border-white/5">
                       <CardTitle className="text-lg flex items-center gap-2">
-                        <Landmark className="h-5 w-5 text-primary" /> Destination IDs
+                        <Landmark className="h-5 w-5 text-primary" /> Destination Nodes
                       </CardTitle>
-                      <CardDescription>Send funds to these accounts first</CardDescription>
+                      <CardDescription className="text-xs">Transfer funds to these identifiers first</CardDescription>
                    </CardHeader>
-                   <CardContent className="p-6 space-y-4">
+                   <CardContent className="p-8 space-y-6">
                       {[
-                        { label: 'Khalti / FonePay / ImePay', id: '9805602394' },
-                        { label: 'eSewa ID', id: '9811557054' }
+                        { label: 'Primary Node (eSewa)', id: '9811557054', color: 'text-green-500' },
+                        { label: 'Secondary Node (Khalti/FonePay)', id: '9805602394', color: 'text-primary' }
                       ].map((acc, i) => (
                         <div 
                           key={i}
-                          className="group relative p-5 rounded-2xl bg-muted/30 border border-white/5 hover:border-primary/50 transition-all cursor-pointer overflow-hidden" 
+                          className="group relative p-6 rounded-[1.5rem] bg-muted/20 border border-white/5 hover:border-primary/50 transition-all cursor-pointer overflow-hidden active:scale-95" 
                           onClick={() => copyToClipboard(acc.id)}
                         >
-                           <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                           <div className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity">
                               <Copy className="h-4 w-4 text-primary" />
                            </div>
                            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mb-1">{acc.label}</p>
-                           <p className="text-2xl font-mono text-primary font-bold">{acc.id}</p>
-                           <p className="text-[10px] text-muted-foreground mt-2 opacity-50">Click to copy ID</p>
+                           <p className={cn("text-3xl font-mono font-bold tracking-tight", acc.color)}>{acc.id}</p>
+                           <p className="text-[10px] text-muted-foreground mt-3 flex items-center gap-2">
+                             <Zap className="h-3 w-3 text-primary" /> Click to copy ID
+                           </p>
                         </div>
                       ))}
 
-                      <div className="flex items-start gap-3 p-5 bg-blue-500/10 rounded-2xl border border-blue-500/20">
-                        <Info className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />
-                        <p className="text-xs text-muted-foreground leading-relaxed">
-                          Verification is manual and usually takes <span className="text-white font-bold">5-15 minutes</span>. Ensure you upload a clear receipt.
-                        </p>
+                      <div className="flex items-start gap-4 p-6 bg-blue-500/10 rounded-3xl border border-blue-500/20">
+                        <Info className="h-6 w-6 text-blue-500 shrink-0 mt-0.5" />
+                        <div className="space-y-2">
+                          <p className="text-xs text-white font-bold uppercase tracking-widest">Verification Notice</p>
+                          <p className="text-[11px] text-muted-foreground leading-relaxed">
+                            Audit cycles take <span className="text-white font-bold">5-15 mins</span>. Ensure your screenshot includes the <span className="text-white font-bold italic">Transaction Date</span> and <span className="text-white font-bold italic">Amount</span>.
+                          </p>
+                        </div>
                       </div>
                    </CardContent>
                 </Card>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="glass-card border-white/5 p-5 rounded-3xl flex flex-col items-center gap-2 text-center">
-                    <ShieldCheck className="h-6 w-6 text-primary" />
-                    <span className="text-[10px] font-bold uppercase tracking-widest">Secure</span>
+                  <div className="glass-card border-white/5 p-6 rounded-[2rem] flex flex-col items-center gap-3 text-center group hover:bg-primary/5 transition-all">
+                    <ShieldCheck className="h-8 w-8 text-primary group-hover:scale-110 transition-transform" />
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Certified Secure</span>
                   </div>
-                  <div className="glass-card border-white/5 p-5 rounded-3xl flex flex-col items-center gap-2 text-center">
-                    <Zap className="h-6 w-6 text-primary" />
-                    <span className="text-[10px] font-bold uppercase tracking-widest">Instant</span>
+                  <div className="glass-card border-white/5 p-6 rounded-[2rem] flex flex-col items-center gap-3 text-center group hover:bg-green-500/5 transition-all">
+                    <Zap className="h-8 w-8 text-green-500 group-hover:scale-110 transition-transform" />
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Fast Processing</span>
                   </div>
                 </div>
              </div>
 
              {/* Request Form */}
              <div className="lg:col-span-8 space-y-8">
-                <Card className="glass-card border-white/5 overflow-hidden rounded-[2rem]">
-                   <CardHeader className="border-b border-white/5 bg-primary/5">
-                      <CardTitle>Deposit Portal</CardTitle>
-                      <CardDescription>Upload proof of payment to credit your account</CardDescription>
+                <Card className="glass-card border-white/5 overflow-hidden rounded-[2.5rem]">
+                   <CardHeader className="border-b border-white/5 bg-primary/5 p-8">
+                      <CardTitle className="text-2xl font-headline uppercase tracking-tighter">Sync <span className="text-primary">Deposit</span></CardTitle>
+                      <CardDescription>Upload proof of payment to finalize the synchronization</CardDescription>
                    </CardHeader>
-                   <CardContent className="p-8">
-                      <form onSubmit={handleSubmit} className="space-y-8">
-                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <div className="space-y-3">
-                               <Label className="text-xs font-bold uppercase tracking-widest flex items-center gap-2">
-                                 <PlusCircle className="h-4 w-4 text-primary" /> Amount (NPR)
+                   <CardContent className="p-10">
+                      <form onSubmit={handleSubmit} className="space-y-10">
+                         <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                            <div className="space-y-4">
+                               <Label className="text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 text-muted-foreground">
+                                 <PlusCircle className="h-4 w-4 text-primary" /> Deposit Amount (NPR)
                                </Label>
-                               <Input 
-                                 type="number" 
-                                 placeholder="0.00" 
-                                 className="h-14 bg-muted/40 border-white/10 text-xl font-bold font-headline rounded-2xl focus:ring-primary/50" 
-                                 value={amount} 
-                                 onChange={(e) => setAmount(e.target.value)} 
-                                 required 
-                               />
+                               <div className="relative">
+                                  <span className="absolute left-4 top-1/2 -translate-y-1/2 font-headline font-bold text-muted-foreground">Rs.</span>
+                                  <Input 
+                                    type="number" 
+                                    placeholder="0" 
+                                    className="h-16 pl-12 bg-muted/40 border-white/10 text-3xl font-bold font-headline rounded-2xl focus:ring-primary/50 transition-all focus:bg-muted/60" 
+                                    value={amount} 
+                                    onChange={(e) => setAmount(e.target.value)} 
+                                    required 
+                                  />
+                               </div>
                             </div>
-                            <div className="space-y-3">
-                               <Label className="text-xs font-bold uppercase tracking-widest flex items-center gap-2">
-                                 <CreditCard className="h-4 w-4 text-primary" /> Network
+                            <div className="space-y-4">
+                               <Label className="text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 text-muted-foreground">
+                                 <CreditCard className="h-4 w-4 text-primary" /> Payment Network
                                </Label>
-                               <div className="flex gap-2">
+                               <div className="flex gap-3">
                                   {['eSewa', 'Khalti', 'FonePay'].map(m => (
                                     <Button 
                                       key={m} 
                                       type="button" 
                                       variant={method === m ? 'default' : 'outline'} 
                                       className={cn(
-                                        "flex-1 h-14 transition-all duration-300 rounded-2xl font-bold text-xs uppercase",
-                                        method === m ? "neon-glow bg-primary border-none" : "border-white/10 hover:bg-primary/10"
+                                        "flex-1 h-16 transition-all duration-300 rounded-2xl font-bold text-[10px] uppercase tracking-widest",
+                                        method === m ? "neon-glow bg-primary border-none scale-105" : "border-white/10 hover:bg-primary/10"
                                       )} 
                                       onClick={() => setMethod(m as any)}
                                     >
@@ -226,33 +244,33 @@ export default function WalletPage() {
                             </div>
                          </div>
 
-                         <div className="space-y-4">
-                            <Label className="text-xs font-bold uppercase tracking-widest flex items-center gap-2">
-                              <Upload className="h-4 w-4 text-primary" /> Proof of Payment
+                         <div className="space-y-6">
+                            <Label className="text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 text-muted-foreground">
+                              <Upload className="h-4 w-4 text-primary" /> Verification Proof (Screenshot)
                             </Label>
                             <div 
                               className={cn(
-                                "border-2 border-dashed rounded-[2.5rem] p-12 text-center cursor-pointer transition-all duration-500",
+                                "border-2 border-dashed rounded-[3rem] p-16 text-center cursor-pointer transition-all duration-500 group",
                                 proofImage ? "border-primary/60 bg-primary/10" : "border-white/10 hover:border-primary/40 hover:bg-white/5"
                               )}
                               onClick={() => document.getElementById('proof')?.click()}
                             >
                                {proofImage ? (
-                                 <div className="relative inline-block group">
-                                    <img src={proofImage} className="h-48 md:h-64 rounded-3xl shadow-2xl object-contain mx-auto transition-transform group-hover:scale-105" alt="Proof" />
-                                    <div className="absolute -top-4 -right-4 h-10 w-10 rounded-full bg-primary flex items-center justify-center neon-glow">
-                                      <CheckCircle2 className="h-6 w-6 text-white" />
+                                 <div className="relative inline-block">
+                                    <img src={proofImage} className="h-56 md:h-72 rounded-3xl shadow-[0_0_50px_rgba(var(--primary),0.3)] object-contain mx-auto transition-transform group-hover:scale-[1.02]" alt="Proof" />
+                                    <div className="absolute -top-5 -right-5 h-12 w-12 rounded-full bg-primary flex items-center justify-center neon-glow animate-pulse">
+                                      <CheckCircle2 className="h-7 w-7 text-white" />
                                     </div>
-                                    <p className="mt-4 text-xs text-primary font-bold">Screenshot Captured - Ready to Sync</p>
+                                    <p className="mt-6 text-xs text-primary font-bold tracking-widest uppercase">Capture Successful - Data Ready</p>
                                  </div>
                                ) : (
-                                 <div className="flex flex-col items-center gap-5">
-                                    <div className="h-20 w-20 rounded-[2rem] bg-muted/50 flex items-center justify-center text-muted-foreground group-hover:text-primary transition-colors">
-                                       <Upload className="h-10 w-10" />
+                                 <div className="flex flex-col items-center gap-6">
+                                    <div className="h-24 w-24 rounded-[2.5rem] bg-muted/50 flex items-center justify-center text-muted-foreground group-hover:text-primary group-hover:bg-primary/10 transition-all">
+                                       <Upload className="h-12 w-12" />
                                     </div>
-                                    <div className="space-y-1">
-                                       <p className="font-bold text-lg">Select Screenshot</p>
-                                       <p className="text-xs text-muted-foreground">PNG or JPG up to 5MB</p>
+                                    <div className="space-y-2">
+                                       <p className="font-bold text-xl uppercase tracking-tighter">Initialize Upload</p>
+                                       <p className="text-xs text-muted-foreground">Attach transaction receipt (MAX 5MB)</p>
                                     </div>
                                  </div>
                                )}
@@ -261,66 +279,73 @@ export default function WalletPage() {
                          </div>
 
                          <Button 
-                           className="w-full h-16 text-lg font-bold rounded-2xl neon-glow uppercase tracking-[0.2em] transition-all hover:scale-[1.01] active:scale-[0.99]" 
+                           className="w-full h-20 text-xl font-bold rounded-3xl neon-glow uppercase tracking-[0.3em] transition-all hover:scale-[1.01] active:scale-[0.98] group" 
                            disabled={isSubmitting}
                          >
                            {isSubmitting ? (
-                             <><Loader2 className="h-6 w-6 animate-spin mr-3" /> Processing...</>
+                             <><Loader2 className="h-7 w-7 animate-spin mr-3" /> Encrypting...</>
                            ) : (
-                             "Initialize Verification"
+                             <>
+                               Finalize Deposit
+                               <ChevronRight className="ml-2 h-6 w-6 group-hover:translate-x-2 transition-transform" />
+                             </>
                            )}
                          </Button>
                       </form>
                    </CardContent>
                 </Card>
 
-                {/* Local Sync History */}
-                <Card className="glass-card border-white/5 overflow-hidden rounded-[2rem]">
-                   <CardHeader className="border-b border-white/5">
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="flex items-center gap-2">
-                          <History className="h-5 w-5 text-primary" /> Recent Syncs
-                        </CardTitle>
-                        <Badge variant="outline" className="border-white/10 text-[10px] px-3">{userRequests.length} Total</Badge>
+                {/* History */}
+                <Card className="glass-card border-white/5 overflow-hidden rounded-[2.5rem]">
+                   <CardHeader className="border-b border-white/5 p-8 flex flex-row items-center justify-between">
+                      <div className="space-y-1">
+                        <CardTitle className="flex items-center gap-2 font-headline uppercase tracking-tighter">Sync <span className="text-primary">History</span></CardTitle>
+                        <CardDescription>Past auditing results and balance updates</CardDescription>
                       </div>
+                      <Badge variant="outline" className="border-white/10 text-[10px] px-4 py-1 font-mono uppercase">{userRequests.length} LOGS</Badge>
                    </CardHeader>
                    <CardContent className="p-0">
                       <div className="divide-y divide-white/5">
                          {userRequests.length > 0 ? (
                            userRequests.map(req => (
-                             <div key={req.id} className="flex items-center justify-between p-6 hover:bg-white/5 transition-colors">
-                                <div className="flex items-center gap-5">
+                             <div key={req.id} className="flex items-center justify-between p-8 hover:bg-white/5 transition-colors group">
+                                <div className="flex items-center gap-6">
                                    <div className={cn(
-                                     "h-14 w-14 rounded-2xl flex items-center justify-center",
+                                     "h-16 w-16 rounded-[1.5rem] flex items-center justify-center transition-transform group-hover:scale-110",
                                      req.method === 'eSewa' ? "bg-green-500/10 text-green-500" : 
                                      req.method === 'Khalti' ? "bg-purple-500/10 text-purple-500" : 
                                      "bg-blue-500/10 text-blue-500"
                                    )}>
-                                      <Landmark className="h-7 w-7" />
+                                      <Landmark className="h-8 w-8" />
                                    </div>
-                                   <div>
-                                      <p className="font-bold text-xl">Rs. {req.amount.toLocaleString()}</p>
-                                      <p className="text-[10px] text-muted-foreground uppercase tracking-[0.2em]">{req.method} • {new Date(req.createdAt).toLocaleDateString()}</p>
+                                   <div className="space-y-1">
+                                      <p className="font-bold text-2xl font-headline tracking-tight">Rs. {req.amount.toLocaleString()}</p>
+                                      <p className="text-[10px] text-muted-foreground uppercase tracking-[0.2em] font-bold">
+                                        {req.method} • {new Date(req.createdAt).toLocaleDateString()}
+                                      </p>
                                    </div>
                                 </div>
-                                <div className="text-right flex flex-col items-end gap-2">
+                                <div className="text-right flex flex-col items-end gap-3">
                                    <Badge className={cn(
-                                     "px-4 py-1.5 rounded-xl text-[10px] border-none font-bold tracking-widest",
-                                     req.status === 'approved' ? 'bg-green-500/20 text-green-500' : 
+                                     "px-5 py-2 rounded-2xl text-[10px] border-none font-black tracking-[0.2em] transition-all",
+                                     req.status === 'approved' ? 'bg-green-500/20 text-green-500 neon-glow-green' : 
                                      req.status === 'rejected' ? 'bg-destructive/20 text-destructive' : 
                                      'bg-yellow-500/20 text-yellow-500'
                                    )}>
                                      {req.status === 'pending' && <Clock className="h-3 w-3 mr-2 inline animate-pulse" />}
                                      {req.status.toUpperCase()}
                                    </Badge>
-                                   <span className="text-[10px] text-muted-foreground font-mono opacity-50">TXID: #{req.id}</span>
+                                   <span className="text-[10px] text-muted-foreground font-mono opacity-50 uppercase tracking-widest">Hash: {req.id}</span>
                                 </div>
                              </div>
                            ))
                          ) : (
-                           <div className="py-24 text-center space-y-4">
-                              <History className="h-16 w-16 text-muted-foreground mx-auto opacity-10" />
-                              <p className="text-muted-foreground">Your transaction history is clear.</p>
+                           <div className="py-32 text-center space-y-6">
+                              <History className="h-20 w-20 text-muted-foreground mx-auto opacity-10 animate-pulse" />
+                              <div className="space-y-1">
+                                <p className="text-muted-foreground font-bold uppercase tracking-widest">No Active Logs</p>
+                                <p className="text-xs text-muted-foreground/50">Your synchronization history is currently clear.</p>
+                              </div>
                            </div>
                          )}
                       </div>

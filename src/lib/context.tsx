@@ -29,7 +29,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [promoCodes, setPromoCodes] = useState<PromoCode[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fast Auth & Profile Sync
+  // Safety Timeout to prevent "Infinite Loading" if Firebase is slow
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (isLoading) {
+        console.warn("Safety timeout triggered: Resolving loading state.");
+        setIsLoading(false);
+      }
+    }, 4000); // 4 seconds max wait
+    return () => clearTimeout(timer);
+  }, [isLoading]);
+
+  // Real-Time Auth & Profile Sync
   useEffect(() => {
     if (!auth || !db) {
       setIsLoading(false);
@@ -38,7 +49,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
-        // Instant base user
+        // Create an instant minimal user to allow Navbar to show the profile area
         setInternalCurrentUser(prev => prev || { 
           id: firebaseUser.uid, 
           email: firebaseUser.email || '', 
@@ -53,6 +64,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             setInternalCurrentUser({ ...docSnap.data(), id: firebaseUser.uid } as User);
           }
           setIsLoading(false);
+        }, (error) => {
+          console.error("Profile snapshot error:", error);
+          setIsLoading(false);
         });
 
         return () => unsubProfile();
@@ -65,7 +79,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribeAuth();
   }, []);
 
-  // Real-Time Global Data Sync (Instant updates from database)
+  // Real-Time Global Data Sync
   useEffect(() => {
     if (!db) return;
 
