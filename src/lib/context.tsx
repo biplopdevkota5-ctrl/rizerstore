@@ -5,7 +5,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, Product, FundRequest, Purchase, Announcement, PromoCode } from './types';
 import { db, auth } from './firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { collection, onSnapshot, query, orderBy, doc, getDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, doc } from 'firebase/firestore';
 
 interface AppContextType {
   currentUser: User | null;
@@ -18,6 +18,7 @@ interface AppContextType {
   syncData: () => void;
   logout: () => void;
   isLoading: boolean;
+  isFirebaseConfigured: boolean;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -31,24 +32,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [promoCodes, setPromoCodes] = useState<PromoCode[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const isFirebaseConfigured = () => {
-    const config = (db as any)._app?.options;
-    return config && config.apiKey && !config.apiKey.includes("YOUR_API_KEY");
-  };
+  const isFirebaseConfigured = !!auth && !!db;
 
   // 1. Listen for Auth State Changes
   useEffect(() => {
-    if (!isFirebaseConfigured()) {
+    if (!auth || !db) {
       setIsLoading(false);
       return;
     }
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        // User is logged in, fetch their Firestore profile
-        const userRef = doc(db, 'users', firebaseUser.uid);
+        const userRef = doc(db!, 'users', firebaseUser.uid);
         
-        // Use real-time listener for the user profile (to sync balance)
         const unsubProfile = onSnapshot(userRef, (docSnap) => {
           if (docSnap.exists()) {
             const userData = docSnap.data() as User;
@@ -68,7 +64,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
         return () => unsubProfile();
       } else {
-        // User is logged out
         setInternalCurrentUser(null);
         setIsLoading(false);
       }
@@ -79,7 +74,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // 2. Listen for Global Collections
   useEffect(() => {
-    if (!isFirebaseConfigured()) return;
+    if (!db) return;
 
     const unsubProducts = onSnapshot(query(collection(db, 'products'), orderBy('createdAt', 'desc')), (snap) => {
       setProducts(snap.docs.map(doc => doc.data() as Product));
@@ -110,18 +105,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const syncData = () => {
-    // Handled by onSnapshot
-  };
+  const syncData = () => {};
 
   const setCurrentUser = (user: User | null) => {
     setInternalCurrentUser(user);
   };
 
   const logout = async () => {
-    await signOut(auth);
-    setInternalCurrentUser(null);
-    window.location.href = '/';
+    if (!auth) return;
+    try {
+      await signOut(auth);
+      setInternalCurrentUser(null);
+      window.location.href = '/';
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
   };
 
   return (
@@ -135,7 +133,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setCurrentUser, 
       syncData,
       logout,
-      isLoading
+      isLoading,
+      isFirebaseConfigured
     }}>
       {children}
     </AppContext.Provider>

@@ -16,13 +16,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Gamepad2, Lock, Mail, User as UserIcon, AlertTriangle, Loader2 } from "lucide-react";
+import { Gamepad2, Lock, Mail, User as UserIcon, Loader2, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 function AuthContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { setCurrentUser } = useAppContext();
+  const { setCurrentUser, isFirebaseConfigured } = useAppContext();
   const { toast } = useToast();
   
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'login');
@@ -32,30 +32,18 @@ function AuthContent() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const isFirebaseConfigured = () => {
-    const config = (db as any)._app?.options;
-    return config && config.apiKey && !config.apiKey.includes("YOUR_API_KEY");
-  };
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!isFirebaseConfigured()) {
-      toast({ 
-        title: "Configuration Required", 
-        description: "Please update src/lib/firebase.ts with your real project keys.", 
-        variant: "destructive" 
-      });
+    if (!auth || !db) {
+      toast({ title: "Configuration Missing", description: "Firebase is not configured yet.", variant: "destructive" });
       return;
     }
-
     setIsLoading(true);
     
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // Fetch additional data from Firestore
       const userDoc = await getDoc(doc(db, "users", user.uid));
       if (userDoc.exists()) {
         const userData = userDoc.data();
@@ -67,7 +55,7 @@ function AuthContent() {
           role: userData.role || 'user'
         });
         
-        toast({ title: "Login Successful", description: `Welcome back, ${userData.username || 'Gamer'}!` });
+        toast({ title: "Login Successful", description: `Welcome back!` });
         
         if (userData.role === 'admin') {
           router.push('/admin/dashboard');
@@ -80,6 +68,7 @@ function AuthContent() {
       let message = "Invalid email or password.";
       if (error.code === 'auth/user-not-found') message = "Account not found.";
       if (error.code === 'auth/wrong-password') message = "Incorrect password.";
+      if (error.code === 'auth/invalid-api-key') message = "Invalid API Key. Check your settings.";
       
       toast({ title: "Login Failed", description: message, variant: "destructive" });
     } finally {
@@ -89,16 +78,10 @@ function AuthContent() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!isFirebaseConfigured()) {
-      toast({ 
-        title: "Configuration Required", 
-        description: "Please update src/lib/firebase.ts with your real project keys.", 
-        variant: "destructive" 
-      });
+    if (!auth || !db) {
+      toast({ title: "Configuration Missing", description: "Firebase is not configured yet.", variant: "destructive" });
       return;
     }
-
     if (username.length < 3) {
       toast({ title: "Invalid Username", description: "Username must be at least 3 characters.", variant: "destructive" });
       return;
@@ -107,14 +90,11 @@ function AuthContent() {
     setIsLoading(true);
 
     try {
-      // 1. Create Auth User
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // 2. Update Display Name
       await updateProfile(user, { displayName: username });
 
-      // 3. Create Firestore Profile
       const newUserProfile = {
         id: user.uid,
         username,
@@ -134,7 +114,7 @@ function AuthContent() {
         role: 'user'
       });
 
-      toast({ title: "Account Created!", description: "Welcome to Rizer Store community." });
+      toast({ title: "Account Created!", description: "Welcome to Rizer Store." });
       router.push('/');
     } catch (error: any) {
       console.error("Signup Error:", error);
@@ -151,14 +131,16 @@ function AuthContent() {
   return (
     <div className="container mx-auto px-4 py-12 md:py-20 flex justify-center items-center">
       <div className="w-full max-w-md space-y-6">
-        {!isFirebaseConfigured() && (
-          <div className="bg-yellow-500/10 border border-yellow-500/50 p-4 rounded-xl flex items-start gap-3 text-yellow-500">
-            <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
-            <div className="text-xs">
-              <p className="font-bold mb-1">Firebase Configuration Missing</p>
-              <p>You need to update <strong>src/lib/firebase.ts</strong> with your real project keys for authentication to work.</p>
-            </div>
-          </div>
+        {!isFirebaseConfigured && (
+          <Card className="border-yellow-500/50 bg-yellow-500/10 text-yellow-500 mb-6">
+            <CardContent className="p-4 flex gap-4">
+              <AlertTriangle className="h-6 w-6 shrink-0" />
+              <div className="text-sm">
+                <p className="font-bold">Firebase Configuration Missing</p>
+                <p>To fix this, go to your <strong>Netlify Dashboard > Site Settings > Environment Variables</strong> and add your <strong>API Key</strong> and <strong>App ID</strong>.</p>
+              </div>
+            </CardContent>
+          </Card>
         )}
 
         <Card className="glass-card border-white/5 neon-glow">
@@ -210,7 +192,7 @@ function AuthContent() {
                       />
                     </div>
                   </div>
-                  <Button type="submit" className="w-full font-bold h-11 neon-glow" disabled={isLoading}>
+                  <Button type="submit" className="w-full font-bold h-11 neon-glow" disabled={isLoading || !isFirebaseConfigured}>
                     {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                     {isLoading ? "Authenticating..." : "Login to Store"}
                   </Button>
@@ -266,7 +248,7 @@ function AuthContent() {
                       />
                     </div>
                   </div>
-                  <Button type="submit" className="w-full font-bold h-11 neon-glow" disabled={isLoading}>
+                  <Button type="submit" className="w-full font-bold h-11 neon-glow" disabled={isLoading || !isFirebaseConfigured}>
                     {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                     {isLoading ? "Creating Account..." : "Create Account"}
                   </Button>
