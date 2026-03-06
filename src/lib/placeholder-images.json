@@ -1,3 +1,28 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "valorant-acc",
+      "description": "Valorant Account",
+      "imageUrl": "https://picsum.photos/seed/valorant/600/400",
+      "imageHint": "gaming valorant"
+    },
+    {
+      "id": "pubg-acc",
+      "description": "PUBG Mobile Account",
+      "imageUrl": "https://picsum.photos/seed/pubg/600/400",
+      "imageHint": "gaming pubg"
+    },
+    {
+      "id": "freefire-acc",
+      "description": "Free Fire Account",
+      "imageUrl": "https://picsum.photos/seed/freefire/600/400",
+      "imageHint": "gaming mobile"
+    },
+    {
+      "id": "giftcard-itunes",
+      "description": "iTunes Gift Card",
+      "imageUrl": "https://picsum.photos/seed/itunes/600/400",
+      "imageHint": "gift card"
+    }
+  ]
 }
