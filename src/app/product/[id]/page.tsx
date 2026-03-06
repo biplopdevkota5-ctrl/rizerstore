@@ -1,8 +1,9 @@
+
 "use client";
 
 import { use, useState } from "react";
 import { useAppContext } from "@/lib/context";
-import { db } from "@/lib/db";
+import { dbService } from "@/lib/db";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -32,7 +33,7 @@ import { PromoCode } from "@/lib/types";
 
 export default function ProductDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const { products, currentUser, promoCodes, syncData } = useAppContext();
+  const { products, currentUser, promoCodes, setCurrentUser } = useAppContext();
   const { toast } = useToast();
   const router = useRouter();
 
@@ -78,7 +79,7 @@ export default function ProductDetailsPage({ params }: { params: Promise<{ id: s
     toast({ title: "Promo Applied!", description: `You got Rs. ${promo.discountAmount} discount.` });
   };
 
-  const handlePurchase = () => {
+  const handlePurchase = async () => {
     if (!currentUser) {
       toast({ title: "Login Required", description: "You must be logged in to purchase items.", variant: "destructive" });
       router.push('/auth?tab=login');
@@ -98,52 +99,45 @@ export default function ProductDetailsPage({ params }: { params: Promise<{ id: s
 
     setIsBuying(true);
 
-    setTimeout(() => {
-      const allUsers = db.getUsers();
-      const userIndex = allUsers.findIndex(u => u.id === currentUser.id);
+    try {
+      // 1. Deduct balance in Firebase
+      const newBalance = currentUser.balance - finalPrice;
+      await dbService.updateUserBalance(currentUser.id, newBalance);
       
-      if (userIndex !== -1) {
-        // Deduct balance
-        allUsers[userIndex].balance -= finalPrice;
-        db.saveUsers(allUsers);
-        
-        // Update Promo usage
-        if (appliedPromo) {
-          const allPromos = db.getPromoCodes();
-          const pIndex = allPromos.findIndex(p => p.id === appliedPromo.id);
-          if (pIndex !== -1) {
-            allPromos[pIndex].usedCount += 1;
-            db.savePromoCodes(allPromos);
-          }
-        }
-
-        // Save purchase
-        const purchases = db.getPurchases();
-        const newPurchase = {
-          id: Math.random().toString(36).substring(7),
-          userId: currentUser.id,
-          username: currentUser.username,
-          productId: product.id,
-          productName: product.name,
-          price: finalPrice,
-          discountApplied: appliedPromo?.discountAmount,
-          contactMethod,
-          contactId,
-          status: 'completed' as const,
-          createdAt: Date.now()
-        };
-        db.savePurchases([...purchases, newPurchase]);
-        
-        syncData();
-        toast({ title: "Purchase Successful!", description: "Opening WhatsApp for delivery..." });
-
-        const whatsappMsg = encodeURIComponent(`Hey Rizer Store, I just bought ${product.name} for Rs. ${finalPrice}${appliedPromo ? ` (applied promo: ${appliedPromo.code})` : ''}. Please provide the details. Contact ID: ${contactId} (${contactMethod})`);
-        window.open(`https://wa.me/9805602394?text=${whatsappMsg}`, '_blank');
-        
-        router.push('/history');
+      // 2. Update Promo usage in Firebase if applied
+      if (appliedPromo) {
+        await dbService.incrementPromoUsage(appliedPromo.id);
       }
+
+      // 3. Save purchase record in Firebase
+      const newPurchase = {
+        id: Math.random().toString(36).substring(7),
+        userId: currentUser.id,
+        username: currentUser.username,
+        productId: product.id,
+        productName: product.name,
+        price: finalPrice,
+        discountApplied: appliedPromo?.discountAmount,
+        contactMethod,
+        contactId,
+        status: 'completed' as const,
+        createdAt: Date.now()
+      };
+      await dbService.addPurchase(newPurchase);
+      
+      toast({ title: "Purchase Successful!", description: "Opening WhatsApp for delivery..." });
+
+      // Trigger WhatsApp
+      const whatsappMsg = encodeURIComponent(`Hey Rizer Store, I just bought ${product.name} for Rs. ${finalPrice}${appliedPromo ? ` (applied promo: ${appliedPromo.code})` : ''}. Please provide the details. Contact ID: ${contactId} (${contactMethod})`);
+      window.open(`https://wa.me/9805602394?text=${whatsappMsg}`, '_blank');
+      
+      router.push('/history');
+    } catch (error) {
+      console.error("Purchase error:", error);
+      toast({ title: "Purchase Failed", description: "Could not complete transaction. Check your connection.", variant: "destructive" });
+    } finally {
       setIsBuying(false);
-    }, 1500);
+    }
   };
 
   return (
@@ -242,7 +236,6 @@ export default function ProductDetailsPage({ params }: { params: Promise<{ id: s
                   />
                 </div>
 
-                {/* Promo Code Input */}
                 <div className="space-y-2">
                   <Label className="text-sm flex items-center gap-1">
                     <Ticket className="h-3 w-3" /> Promo Code
