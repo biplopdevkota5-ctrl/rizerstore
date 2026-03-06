@@ -8,8 +8,17 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { Bar, BarChart, XAxis, YAxis, ResponsiveContainer, Cell, Area, AreaChart, CartesianGrid, Tooltip } from "recharts";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { 
+  Area, 
+  AreaChart, 
+  CartesianGrid, 
+  XAxis, 
+  YAxis, 
+  Tooltip, 
+  ResponsiveContainer 
+} from "recharts";
 import { 
   Dialog, 
   DialogContent, 
@@ -18,35 +27,37 @@ import {
   Users, 
   Wallet, 
   Package, 
-  Megaphone, 
   ShoppingBag,
-  Plus,
-  Trash2,
   Check,
   X,
-  Ticket,
   Maximize2,
   Clock,
   Lock,
   Loader2,
-  TrendingUp,
-  CreditCard,
-  DollarSign
+  DollarSign,
+  ShieldAlert,
+  Terminal,
+  ChevronRight
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { User } from "@/lib/types";
 import { collection, getDocs, doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { cn } from "@/lib/utils";
 
 export default function AdminDashboard() {
-  const { currentUser, products, fundRequests, purchases, isLoading } = useAppContext();
+  const { currentUser, fundRequests, purchases, isLoading } = useAppContext();
   const { toast } = useToast();
   const router = useRouter();
 
+  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [securityKey, setSecurityKey] = useState("");
   const [viewingProof, setViewingProof] = useState<string | null>(null);
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
+
+  const MASTER_KEY = "090102030405";
 
   useEffect(() => {
     if (!isLoading && (!currentUser || currentUser.role !== 'admin')) {
@@ -56,6 +67,17 @@ export default function AdminDashboard() {
       fetchAllUsers();
     }
   }, [currentUser, isLoading, router]);
+
+  const handleAuthorize = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (securityKey === MASTER_KEY) {
+      setIsAuthorized(true);
+      toast({ title: "Access Granted", description: "Admin session initialized." });
+    } else {
+      toast({ title: "Invalid Key", description: "Unauthorized access attempt logged.", variant: "destructive" });
+      setSecurityKey("");
+    }
+  };
 
   const fetchAllUsers = async () => {
     try {
@@ -101,7 +123,6 @@ export default function AdminDashboard() {
     }
   };
 
-  // Stats Data
   const totalRevenue = useMemo(() => purchases.reduce((acc, p) => acc + p.price, 0), [purchases]);
   const totalBalance = useMemo(() => allUsers.reduce((acc, u) => acc + (u.balance || 0), 0), [allUsers]);
 
@@ -123,19 +144,50 @@ export default function AdminDashboard() {
     return (
       <div className="container min-h-[60vh] flex flex-col items-center justify-center gap-4">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="text-muted-foreground font-headline uppercase tracking-widest text-xs">Authenticating Admin Session...</p>
+        <p className="text-muted-foreground font-headline uppercase tracking-widest text-xs">Syncing Command Layer...</p>
       </div>
     );
   }
 
-  if (!currentUser || currentUser.role !== 'admin') {
+  if (!isAuthorized) {
     return (
-      <div className="container py-40 flex justify-center items-center">
-        <Card className="glass-card border-destructive/20 text-center p-12 space-y-4">
-           <Lock className="h-12 w-12 text-destructive mx-auto mb-2" />
-           <CardTitle>Unauthorized Access</CardTitle>
-           <p className="text-muted-foreground">This area is restricted to administrators.</p>
-           <Button onClick={() => router.push('/')}>Return Home</Button>
+      <div className="container min-h-[80vh] flex items-center justify-center px-4">
+        <Card className="glass-card border-primary/20 max-w-md w-full p-8 space-y-8 relative overflow-hidden">
+          <div className="absolute -top-24 -right-24 h-48 w-48 bg-primary/10 blur-[80px] rounded-full" />
+          <div className="text-center space-y-2">
+            <div className="h-16 w-16 bg-primary/20 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-primary/30 neon-glow">
+              <ShieldAlert className="h-8 w-8 text-primary" />
+            </div>
+            <h2 className="text-2xl font-bold font-headline uppercase tracking-widest">Command Access</h2>
+            <p className="text-xs text-muted-foreground uppercase tracking-widest">Security Clearance Required</p>
+          </div>
+
+          <form onSubmit={handleAuthorize} className="space-y-6">
+            <div className="space-y-2">
+              <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Security Key</Label>
+              <div className="relative">
+                <Terminal className="absolute left-3 top-3.5 h-4 w-4 text-primary opacity-50" />
+                <Input 
+                  type="password" 
+                  placeholder="••••••••••••" 
+                  className="pl-10 h-12 bg-black/40 border-white/10 font-mono tracking-widest focus:ring-primary/50"
+                  value={securityKey}
+                  onChange={(e) => setSecurityKey(e.target.value)}
+                  autoFocus
+                />
+              </div>
+            </div>
+            <Button className="w-full h-12 font-bold neon-glow group" type="submit">
+              INITIALIZE UPLINK
+              <ChevronRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform" />
+            </Button>
+          </form>
+
+          <div className="pt-4 text-center">
+            <Button variant="link" className="text-[10px] text-muted-foreground uppercase tracking-widest" onClick={() => router.push('/')}>
+              Abort Session
+            </Button>
+          </div>
         </Card>
       </div>
     );
@@ -154,7 +206,7 @@ export default function AdminDashboard() {
               <div className="h-2 w-2 rounded-full bg-green-500 animate-ping" />
               SYSTEMS ONLINE
             </Badge>
-            <Button variant="outline" className="border-white/10" onClick={() => router.push('/')}>Exit</Button>
+            <Button variant="outline" className="border-white/10" onClick={() => setIsAuthorized(false)}>Lock Console</Button>
           </div>
         </div>
 
@@ -320,8 +372,6 @@ export default function AdminDashboard() {
               </CardContent>
             </Card>
           </TabsContent>
-
-          {/* ... Other tabs can stay minimal ... */}
         </Tabs>
       </div>
 
