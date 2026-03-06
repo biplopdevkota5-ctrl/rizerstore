@@ -16,13 +16,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Gamepad2, Lock, Mail, User as UserIcon, Loader2, AlertTriangle, ExternalLink } from "lucide-react";
+import { Gamepad2, Lock, Mail, User as UserIcon, Loader2, ExternalLink, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 function AuthContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { setCurrentUser, isFirebaseConfigured } = useAppContext();
+  const { setCurrentUser, isFirebaseConfigured, isLoading: isContextLoading } = useAppContext();
   const { toast } = useToast();
   
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'login');
@@ -62,12 +62,23 @@ function AuthContent() {
         } else {
           router.push('/');
         }
+      } else {
+        // Fallback for users with auth but no profile doc
+        setCurrentUser({
+          id: user.uid,
+          email: user.email!,
+          username: user.displayName || 'User',
+          balance: 0,
+          role: 'user'
+        });
+        router.push('/');
       }
     } catch (error: any) {
       console.error("Login Error:", error);
       let message = "Invalid email or password.";
       if (error.code === 'auth/user-not-found') message = "Account not found.";
       if (error.code === 'auth/wrong-password') message = "Incorrect password.";
+      if (error.code === 'auth/invalid-credential') message = "Incorrect login credentials.";
       
       toast({ title: "Login Failed", description: message, variant: "destructive" });
     } finally {
@@ -127,26 +138,46 @@ function AuthContent() {
     }
   };
 
+  // If the app is initializing auth state
+  if (isContextLoading) {
+    return (
+      <div className="container p-20 text-center flex flex-col items-center gap-4">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        <p className="text-muted-foreground">Initializing connection...</p>
+      </div>
+    );
+  }
+
+  // If Firebase keys are missing
+  if (!isFirebaseConfigured) {
+    return (
+      <div className="container mx-auto px-4 py-20 flex justify-center items-center">
+        <Card className="w-full max-w-md glass-card border-primary/20 bg-primary/5">
+          <CardHeader className="text-center">
+            <AlertTriangle className="h-12 w-12 text-primary mx-auto mb-4" />
+            <CardTitle>Setup Required</CardTitle>
+            <CardDescription>Firebase keys are missing in your environment.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="p-4 rounded-lg bg-background/50 text-sm space-y-2">
+              <p className="font-bold">Add these to your Netlify dashboard:</p>
+              <ul className="list-disc list-inside opacity-70">
+                <li>NEXT_PUBLIC_FIREBASE_API_KEY</li>
+                <li>NEXT_PUBLIC_FIREBASE_APP_ID</li>
+              </ul>
+            </div>
+            <Button className="w-full gap-2" variant="outline" onClick={() => window.open('https://console.firebase.google.com/', '_blank')}>
+              Go to Firebase Console <ExternalLink className="h-4 w-4" />
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto px-4 py-12 md:py-20 flex justify-center items-center">
       <div className="w-full max-w-md space-y-6">
-        {!isFirebaseConfigured && (
-          <Card className="border-primary/50 bg-primary/10 text-primary mb-6">
-            <CardContent className="p-6 flex flex-col gap-4">
-              <div className="flex items-center gap-3">
-                <AlertTriangle className="h-6 w-6 shrink-0" />
-                <p className="font-bold text-lg">Firebase Connection Failed</p>
-              </div>
-              <div className="text-sm space-y-3">
-                <p>The app could not connect to your database. Please ensure your <strong>Firebase Keys</strong> are added correctly.</p>
-              </div>
-              <Button size="sm" variant="outline" className="w-full gap-2 border-primary/20" onClick={() => window.open('https://console.firebase.google.com/project/rizerstore-e022b/settings/general', '_blank')}>
-                Check Firebase Settings <ExternalLink className="h-3 w-3" />
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-
         <Card className="glass-card border-white/5 neon-glow">
           <CardHeader className="text-center">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary mx-auto mb-4 neon-glow">
@@ -176,7 +207,7 @@ function AuthContent() {
                         required 
                         value={email} 
                         onChange={(e) => setEmail(e.target.value)} 
-                        disabled={isLoading || !isFirebaseConfigured}
+                        disabled={isLoading}
                       />
                     </div>
                   </div>
@@ -192,11 +223,11 @@ function AuthContent() {
                         required 
                         value={password} 
                         onChange={(e) => setPassword(e.target.value)} 
-                        disabled={isLoading || !isFirebaseConfigured}
+                        disabled={isLoading}
                       />
                     </div>
                   </div>
-                  <Button type="submit" className="w-full font-bold h-11 neon-glow" disabled={isLoading || !isFirebaseConfigured}>
+                  <Button type="submit" className="w-full font-bold h-11 neon-glow" disabled={isLoading}>
                     {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                     {isLoading ? "Authenticating..." : "Login to Store"}
                   </Button>
@@ -216,7 +247,7 @@ function AuthContent() {
                         required 
                         value={username} 
                         onChange={(e) => setUsername(e.target.value)} 
-                        disabled={isLoading || !isFirebaseConfigured}
+                        disabled={isLoading}
                       />
                     </div>
                   </div>
@@ -232,7 +263,7 @@ function AuthContent() {
                         required 
                         value={email} 
                         onChange={(e) => setEmail(e.target.value)} 
-                        disabled={isLoading || !isFirebaseConfigured}
+                        disabled={isLoading}
                       />
                     </div>
                   </div>
@@ -248,11 +279,11 @@ function AuthContent() {
                         required 
                         value={password} 
                         onChange={(e) => setPassword(e.target.value)} 
-                        disabled={isLoading || !isFirebaseConfigured}
+                        disabled={isLoading}
                       />
                     </div>
                   </div>
-                  <Button type="submit" className="w-full font-bold h-11 neon-glow" disabled={isLoading || !isFirebaseConfigured}>
+                  <Button type="submit" className="w-full font-bold h-11 neon-glow" disabled={isLoading}>
                     {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                     {isLoading ? "Creating Account..." : "Create Account"}
                   </Button>
