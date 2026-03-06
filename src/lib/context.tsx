@@ -30,47 +30,77 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [promoCodes, setPromoCodes] = useState<PromoCode[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Helper to check if Firebase is configured
+  const isFirebaseConfigured = () => {
+    const config = (db as any)._app?.options;
+    return config && config.apiKey && !config.apiKey.includes("YOUR_API_KEY");
+  };
+
   useEffect(() => {
-    // Session Recovery from LocalStorage (keeps the ID)
+    // Session Recovery from LocalStorage
     const storedSession = localStorage.getItem('rizer_session');
     if (storedSession) {
-      const sessionData = JSON.parse(storedSession);
-      // Listen to the current user's data for real-time balance updates
-      const userRef = doc(db, 'users', sessionData.id);
-      const unsubUser = onSnapshot(userRef, (docSnap) => {
-        if (docSnap.exists()) {
-          setInternalCurrentUser(docSnap.data() as User);
-        } else if (sessionData.role === 'admin') {
-           setInternalCurrentUser(sessionData);
+      try {
+        const sessionData = JSON.parse(storedSession);
+        
+        if (sessionData.role === 'admin' && sessionData.id === 'admin-id') {
+          setInternalCurrentUser(sessionData);
+          setIsLoading(false);
+          return;
         }
-      });
-      return () => unsubUser();
+
+        if (isFirebaseConfigured()) {
+          const userRef = doc(db, 'users', sessionData.id);
+          const unsubUser = onSnapshot(userRef, (docSnap) => {
+            if (docSnap.exists()) {
+              setInternalCurrentUser(docSnap.data() as User);
+            } else {
+              // User deleted from DB, logout
+              localStorage.removeItem('rizer_session');
+              setInternalCurrentUser(null);
+            }
+            setIsLoading(false);
+          }, (error) => {
+            console.error("User Sync Error:", error);
+            setIsLoading(false);
+          });
+          return () => unsubUser();
+        } else {
+          setInternalCurrentUser(sessionData);
+          setIsLoading(false);
+        }
+      } catch (e) {
+        console.error("Session recovery error:", e);
+        setIsLoading(false);
+      }
+    } else {
+      setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
+    if (!isFirebaseConfigured()) return;
+
     // Real-time Listeners for Collections
     const unsubProducts = onSnapshot(query(collection(db, 'products'), orderBy('createdAt', 'desc')), (snap) => {
       setProducts(snap.docs.map(doc => doc.data() as Product));
-    });
+    }, (err) => console.error("Products error:", err));
 
     const unsubFunds = onSnapshot(query(collection(db, 'fundRequests'), orderBy('createdAt', 'desc')), (snap) => {
       setFundRequests(snap.docs.map(doc => doc.data() as FundRequest));
-    });
+    }, (err) => console.error("Funds error:", err));
 
     const unsubPurchases = onSnapshot(query(collection(db, 'purchases'), orderBy('createdAt', 'desc')), (snap) => {
       setPurchases(snap.docs.map(doc => doc.data() as Purchase));
-    });
+    }, (err) => console.error("Purchases error:", err));
 
     const unsubAnn = onSnapshot(query(collection(db, 'announcements'), orderBy('createdAt', 'desc')), (snap) => {
       setAnnouncements(snap.docs.map(doc => doc.data() as Announcement));
-    });
+    }, (err) => console.error("Announcements error:", err));
 
     const unsubPromos = onSnapshot(query(collection(db, 'promoCodes'), orderBy('createdAt', 'desc')), (snap) => {
       setPromoCodes(snap.docs.map(doc => doc.data() as PromoCode));
-    });
-
-    setIsLoading(false);
+    }, (err) => console.error("Promos error:", err));
 
     return () => {
       unsubProducts();
@@ -82,7 +112,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const syncData = () => {
-    // This is now handled automatically by real-time listeners
+    // Handled by onSnapshot
   };
 
   const setCurrentUser = (user: User | null) => {
