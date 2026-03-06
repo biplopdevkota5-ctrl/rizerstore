@@ -1,9 +1,12 @@
+
 "use client";
 
 import { useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAppContext } from "@/lib/context";
-import { db } from "@/lib/db";
+import { dbService } from "@/lib/db";
+import { db } from "@/lib/firebase";
+import { collection, query, where, getDocs } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,13 +18,12 @@ import { useToast } from "@/hooks/use-toast";
 function AuthContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { setCurrentUser, syncData } = useAppContext();
+  const { setCurrentUser } = useAppContext();
   const { toast } = useToast();
   
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'login');
   const [isLoading, setIsLoading] = useState(false);
 
-  // Form states
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -30,64 +32,77 @@ function AuthContent() {
     e.preventDefault();
     setIsLoading(true);
     
-    // Admin override
-    if (email === 'admin@rizer.store' && password === '090102030405') {
-      const adminUser = { id: 'admin-id', username: 'Admin', email: 'admin@rizer.store', balance: 999999, role: 'admin' as const };
-      setCurrentUser(adminUser);
-      toast({ title: "Admin Login Successful", description: "Welcome to the control panel." });
-      router.push('/admin/dashboard');
+    try {
+      if (email === 'admin@rizer.store' && password === '090102030405') {
+        const adminUser = { id: 'admin-id', username: 'Admin', email: 'admin@rizer.store', balance: 999999, role: 'admin' as const };
+        setCurrentUser(adminUser);
+        toast({ title: "Admin Login Successful", description: "Welcome to the control panel." });
+        router.push('/admin/dashboard');
+        setIsLoading(false);
+        return;
+      }
+
+      const usersRef = collection(db, "users");
+      const q = query(usersRef, where("email", "==", email), where("password", "==", password));
+      const qAlt = query(usersRef, where("username", "==", email), where("password", "==", password));
+      
+      let snap = await getDocs(q);
+      if (snap.empty) snap = await getDocs(qAlt);
+
+      if (!snap.empty) {
+        const user = snap.docs[0].data() as any;
+        setCurrentUser(user);
+        toast({ title: "Welcome back!", description: `Logged in as ${user.username}` });
+        router.push('/');
+      } else {
+        toast({ title: "Login Failed", description: "Invalid credentials.", variant: "destructive" });
+      }
+    } catch (error) {
+      toast({ title: "Error", description: "Something went wrong.", variant: "destructive" });
+    } finally {
       setIsLoading(false);
-      return;
     }
-
-    const users = db.getUsers();
-    const user = users.find(u => (u.email === email || u.username === email) && u.password === password);
-
-    if (user) {
-      setCurrentUser(user);
-      toast({ title: "Welcome back!", description: `Logged in as ${user.username}` });
-      router.push('/');
-    } else {
-      toast({ title: "Login Failed", description: "Invalid email/username or password.", variant: "destructive" });
-    }
-    setIsLoading(false);
   };
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    const users = db.getUsers();
-    
-    if (users.some(u => u.username === username)) {
-      toast({ title: "Signup Failed", description: "Username already taken.", variant: "destructive" });
+    try {
+      const usersRef = collection(db, "users");
+      const qUser = query(usersRef, where("username", "==", username));
+      const qEmail = query(usersRef, where("email", "==", email));
+      
+      const [uSnap, eSnap] = await Promise.all([getDocs(qUser), getDocs(qEmail)]);
+
+      if (!uSnap.empty) {
+        toast({ title: "Signup Failed", description: "Username taken.", variant: "destructive" });
+        return;
+      }
+      if (!eSnap.empty) {
+        toast({ title: "Signup Failed", description: "Email registered.", variant: "destructive" });
+        return;
+      }
+
+      const newUser = {
+        id: Math.random().toString(36).substring(7),
+        username,
+        email,
+        password,
+        balance: 0,
+        role: 'user' as const
+      };
+
+      await dbService.saveUser(newUser);
+      setCurrentUser(newUser);
+
+      toast({ title: "Account Created!", description: "Welcome to Rizer Store." });
+      router.push('/');
+    } catch (error) {
+      toast({ title: "Error", description: "Could not create account.", variant: "destructive" });
+    } finally {
       setIsLoading(false);
-      return;
     }
-
-    if (users.some(u => u.email === email)) {
-      toast({ title: "Signup Failed", description: "Email already registered.", variant: "destructive" });
-      setIsLoading(false);
-      return;
-    }
-
-    const newUser = {
-      id: Math.random().toString(36).substring(7),
-      username,
-      email,
-      password,
-      balance: 0,
-      role: 'user' as const
-    };
-
-    const updatedUsers = [...users, newUser];
-    db.saveUsers(updatedUsers);
-    setCurrentUser(newUser);
-    syncData();
-
-    toast({ title: "Account Created!", description: "Welcome to Rizer Store." });
-    router.push('/');
-    setIsLoading(false);
   };
 
   return (
@@ -113,30 +128,14 @@ function AuthContent() {
                   <Label htmlFor="login-email">Email or Username</Label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input 
-                      id="login-email" 
-                      placeholder="Enter your email" 
-                      className="pl-10 bg-muted/30" 
-                      type="text"
-                      required
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                    />
+                    <Input id="login-email" placeholder="Enter your email" className="pl-10 bg-muted/30" type="text" required value={email} onChange={(e) => setEmail(e.target.value)} />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="login-password">Password</Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input 
-                      id="login-password" 
-                      type="password" 
-                      placeholder="••••••••" 
-                      className="pl-10 bg-muted/30" 
-                      required
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                    />
+                    <Input id="login-password" type="password" placeholder="••••••••" className="pl-10 bg-muted/30" required value={password} onChange={(e) => setPassword(e.target.value)} />
                   </div>
                 </div>
                 <Button type="submit" className="w-full font-bold h-11 neon-glow" disabled={isLoading}>
@@ -151,44 +150,21 @@ function AuthContent() {
                   <Label htmlFor="username">Username</Label>
                   <div className="relative">
                     <UserIcon className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input 
-                      id="username" 
-                      placeholder="rizer_gamer" 
-                      className="pl-10 bg-muted/30" 
-                      required
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                    />
+                    <Input id="username" placeholder="rizer_gamer" className="pl-10 bg-muted/30" required value={username} onChange={(e) => setUsername(e.target.value)} />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="signup-email">Email</Label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input 
-                      id="signup-email" 
-                      type="email" 
-                      placeholder="gamer@example.com" 
-                      className="pl-10 bg-muted/30" 
-                      required
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                    />
+                    <Input id="signup-email" type="email" placeholder="gamer@example.com" className="pl-10 bg-muted/30" required value={email} onChange={(e) => setEmail(e.target.value)} />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="signup-password">Password</Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input 
-                      id="signup-password" 
-                      type="password" 
-                      placeholder="••••••••" 
-                      className="pl-10 bg-muted/30" 
-                      required
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                    />
+                    <Input id="signup-password" type="password" placeholder="••••••••" className="pl-10 bg-muted/30" required value={password} onChange={(e) => setPassword(e.target.value)} />
                   </div>
                 </div>
                 <Button type="submit" className="w-full font-bold h-11 neon-glow" disabled={isLoading}>

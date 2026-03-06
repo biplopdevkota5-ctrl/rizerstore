@@ -1,8 +1,10 @@
+
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, Product, FundRequest, Purchase, Announcement, PromoCode } from './types';
-import { db } from './db';
+import { db } from './firebase';
+import { collection, onSnapshot, query, orderBy, doc, getDoc } from 'firebase/firestore';
 
 interface AppContextType {
   currentUser: User | null;
@@ -14,6 +16,7 @@ interface AppContextType {
   setCurrentUser: (user: User | null) => void;
   syncData: () => void;
   logout: () => void;
+  isLoading: boolean;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -25,40 +28,74 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [promoCodes, setPromoCodes] = useState<PromoCode[]>([]);
-
-  const syncData = () => {
-    const session = db.getCurrentSession();
-    if (session) {
-      const allUsers = db.getUsers();
-      const updatedUser = allUsers.find(u => u.id === session.id);
-      if (updatedUser) {
-        setInternalCurrentUser(updatedUser);
-        db.saveSession(updatedUser);
-      } else if (session.role === 'admin') {
-        setInternalCurrentUser(session);
-      }
-    } else {
-      setInternalCurrentUser(null);
-    }
-    
-    setProducts(db.getProducts());
-    setFundRequests(db.getFundRequests());
-    setPurchases(db.getPurchases());
-    setAnnouncements(db.getAnnouncements());
-    setPromoCodes(db.getPromoCodes());
-  };
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    syncData();
+    // Session Recovery from LocalStorage (keeps the ID)
+    const storedSession = localStorage.getItem('rizer_session');
+    if (storedSession) {
+      const sessionData = JSON.parse(storedSession);
+      // Listen to the current user's data for real-time balance updates
+      const userRef = doc(db, 'users', sessionData.id);
+      const unsubUser = onSnapshot(userRef, (docSnap) => {
+        if (docSnap.exists()) {
+          setInternalCurrentUser(docSnap.data() as User);
+        } else if (sessionData.role === 'admin') {
+           setInternalCurrentUser(sessionData);
+        }
+      });
+      return () => unsubUser();
+    }
   }, []);
 
+  useEffect(() => {
+    // Real-time Listeners for Collections
+    const unsubProducts = onSnapshot(query(collection(db, 'products'), orderBy('createdAt', 'desc')), (snap) => {
+      setProducts(snap.docs.map(doc => doc.data() as Product));
+    });
+
+    const unsubFunds = onSnapshot(query(collection(db, 'fundRequests'), orderBy('createdAt', 'desc')), (snap) => {
+      setFundRequests(snap.docs.map(doc => doc.data() as FundRequest));
+    });
+
+    const unsubPurchases = onSnapshot(query(collection(db, 'purchases'), orderBy('createdAt', 'desc')), (snap) => {
+      setPurchases(snap.docs.map(doc => doc.data() as Purchase));
+    });
+
+    const unsubAnn = onSnapshot(query(collection(db, 'announcements'), orderBy('createdAt', 'desc')), (snap) => {
+      setAnnouncements(snap.docs.map(doc => doc.data() as Announcement));
+    });
+
+    const unsubPromos = onSnapshot(query(collection(db, 'promoCodes'), orderBy('createdAt', 'desc')), (snap) => {
+      setPromoCodes(snap.docs.map(doc => doc.data() as PromoCode));
+    });
+
+    setIsLoading(false);
+
+    return () => {
+      unsubProducts();
+      unsubFunds();
+      unsubPurchases();
+      unsubAnn();
+      unsubPromos();
+    };
+  }, []);
+
+  const syncData = () => {
+    // This is now handled automatically by real-time listeners
+  };
+
   const setCurrentUser = (user: User | null) => {
-    db.saveSession(user);
+    if (user) {
+      localStorage.setItem('rizer_session', JSON.stringify(user));
+    } else {
+      localStorage.removeItem('rizer_session');
+    }
     setInternalCurrentUser(user);
   };
 
   const logout = () => {
-    db.saveSession(null);
+    localStorage.removeItem('rizer_session');
     setInternalCurrentUser(null);
     window.location.href = '/';
   };
@@ -73,7 +110,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       promoCodes,
       setCurrentUser, 
       syncData,
-      logout 
+      logout,
+      isLoading
     }}>
       {children}
     </AppContext.Provider>
