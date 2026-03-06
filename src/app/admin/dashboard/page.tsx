@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -57,6 +58,7 @@ export default function AdminDashboard() {
 
   const handleAdminLogin = (e: React.FormEvent) => {
     e.preventDefault();
+    // THE ADMIN PASSWORD IS: 090102030405
     if (password === '090102030405') {
       setIsAdminAuthenticated(true);
       toast({ title: "Welcome, Admin", description: "Authorization successful." });
@@ -72,7 +74,7 @@ export default function AdminDashboard() {
           <CardHeader className="text-center">
             <LayoutDashboard className="h-10 w-10 text-primary mx-auto mb-4" />
             <CardTitle>Admin Entrance</CardTitle>
-            <CardDescription>Enter admin credentials to proceed</CardDescription>
+            <CardDescription>Enter admin credentials (090102030405) to proceed</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleAdminLogin} className="space-y-4">
