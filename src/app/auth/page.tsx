@@ -32,48 +32,36 @@ function AuthContent() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  // Auto-redirect if user is already authenticated
+  // Immediate redirect when user is authenticated
   useEffect(() => {
-    if (!isContextLoading && currentUser) {
+    if (currentUser) {
       router.push('/');
     }
-  }, [currentUser, isContextLoading, router]);
+  }, [currentUser, router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!auth) {
-      toast({ title: "Configuration Error", description: "Auth service is unavailable.", variant: "destructive" });
-      return;
-    }
+    if (!auth) return;
     
     setIsLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      toast({ title: "Welcome Back!", description: "Log in successful." });
-      router.push('/');
+      toast({ title: "Welcome Back!" });
+      // Redirect happens via useEffect
     } catch (error: any) {
-      let message = "Invalid email or password.";
-      if (error.code === 'auth/invalid-credential') message = "Incorrect credentials.";
-      if (error.code === 'auth/user-not-found') message = "Account not found.";
-      
-      toast({ title: "Login Failed", description: message, variant: "destructive" });
-    } finally {
+      toast({ 
+        title: "Login Failed", 
+        description: "Invalid credentials.", 
+        variant: "destructive" 
+      });
       setIsLoading(false);
     }
   };
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!auth || !db) {
-      toast({ title: "Configuration Error", description: "Database services unavailable.", variant: "destructive" });
-      return;
-    }
+    if (!auth || !db) return;
     
-    if (username.trim().length < 3) {
-      toast({ title: "Username too short", description: "Minimum 3 characters.", variant: "destructive" });
-      return;
-    }
-
     setIsLoading(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -91,23 +79,19 @@ function AuthContent() {
       };
 
       await setDoc(doc(db, "users", user.uid), newUserProfile);
-      toast({ title: "Success!", description: "Account created successfully." });
-      router.push('/');
+      toast({ title: "Success!", description: "Account created." });
+      // Redirect happens via useEffect
     } catch (error: any) {
-      let message = "Could not create account.";
-      if (error.code === 'auth/email-already-in-use') {
-        message = "Email already exists. Please login.";
-        setActiveTab('login');
-      } else if (error.code === 'auth/weak-password') {
-        message = "Password should be at least 6 characters.";
-      }
-      toast({ title: "Signup Failed", description: message, variant: "destructive" });
-    } finally {
+      toast({ 
+        title: "Signup Failed", 
+        description: error.message, 
+        variant: "destructive" 
+      });
       setIsLoading(false);
     }
   };
 
-  if (isContextLoading) {
+  if (isContextLoading && !currentUser) {
     return (
       <div className="container min-h-[60vh] flex flex-col items-center justify-center gap-4">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />

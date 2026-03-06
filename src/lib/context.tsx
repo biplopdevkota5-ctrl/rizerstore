@@ -30,39 +30,41 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [promoCodes, setPromoCodes] = useState<PromoCode[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Auth & Profile Sync
+  // Auth & Profile Sync - Optimized for Speed
   useEffect(() => {
     if (!auth || !db) {
       setIsLoading(false);
       return;
     }
 
-    // Safety timeout to ensure loading doesn't hang
-    const timer = setTimeout(() => setIsLoading(false), 3000);
-
     const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
+        // Immediately set a base user to stop global loading spinner and show "Logged In" UI
+        setInternalCurrentUser(prev => prev || { 
+          id: firebaseUser.uid, 
+          email: firebaseUser.email || '', 
+          username: firebaseUser.displayName || 'Gamer', 
+          balance: 0, 
+          role: 'user' 
+        });
+        
+        // Then start the live profile sync
         const userRef = doc(db, 'users', firebaseUser.uid);
-        onSnapshot(userRef, (docSnap) => {
+        const unsubProfile = onSnapshot(userRef, (docSnap) => {
           if (docSnap.exists()) {
             setInternalCurrentUser({ ...docSnap.data(), id: firebaseUser.uid } as User);
-          } else {
-            setInternalCurrentUser({ id: firebaseUser.uid, email: firebaseUser.email!, username: 'Gamer', balance: 0, role: 'user' });
           }
           setIsLoading(false);
-          clearTimeout(timer);
         });
+
+        return () => unsubProfile();
       } else {
         setInternalCurrentUser(null);
         setIsLoading(false);
-        clearTimeout(timer);
       }
     });
 
-    return () => {
-      unsubscribeAuth();
-      clearTimeout(timer);
-    };
+    return () => unsubscribeAuth();
   }, []);
 
   // Global Data Sync
