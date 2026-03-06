@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -60,10 +61,10 @@ export default function AdminDashboard() {
   const MASTER_KEY = "090102030405";
 
   useEffect(() => {
-    if (!isLoading && (!currentUser || currentUser.role !== 'admin')) {
-      toast({ title: "Access Denied", description: "Admin accounts only.", variant: "destructive" });
-      router.push('/');
-    } else if (currentUser?.role === 'admin') {
+    if (!isLoading && !currentUser) {
+      toast({ title: "Access Denied", description: "Please login first.", variant: "destructive" });
+      router.push('/auth?tab=login');
+    } else if (currentUser) {
       fetchAllUsers();
     }
   }, [currentUser, isLoading, router]);
