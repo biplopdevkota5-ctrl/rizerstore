@@ -30,42 +30,47 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [promoCodes, setPromoCodes] = useState<PromoCode[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Helper to check if Firebase is configured
   const isFirebaseConfigured = () => {
     const config = (db as any)._app?.options;
     return config && config.apiKey && !config.apiKey.includes("YOUR_API_KEY");
   };
 
   useEffect(() => {
-    // Session Recovery from LocalStorage
     const storedSession = localStorage.getItem('rizer_session');
     if (storedSession) {
       try {
         const sessionData = JSON.parse(storedSession);
         
+        // Admin recovery is always handled locally first
         if (sessionData.role === 'admin' && sessionData.id === 'admin-id') {
           setInternalCurrentUser(sessionData);
           setIsLoading(false);
           return;
         }
 
+        // If Firebase is configured, verify and sync user data from cloud
         if (isFirebaseConfigured()) {
           const userRef = doc(db, 'users', sessionData.id);
           const unsubUser = onSnapshot(userRef, (docSnap) => {
             if (docSnap.exists()) {
-              setInternalCurrentUser(docSnap.data() as User);
+              const userData = docSnap.data() as User;
+              setInternalCurrentUser(userData);
+              localStorage.setItem('rizer_session', JSON.stringify(userData));
             } else {
-              // User deleted from DB, logout
+              // User deleted from DB or invalid session, clear it
               localStorage.removeItem('rizer_session');
               setInternalCurrentUser(null);
             }
             setIsLoading(false);
           }, (error) => {
             console.error("User Sync Error:", error);
+            // On error, keep the local session but stop loading
+            setInternalCurrentUser(sessionData);
             setIsLoading(false);
           });
           return () => unsubUser();
         } else {
+          // If not configured, just use local data (useful for preview)
           setInternalCurrentUser(sessionData);
           setIsLoading(false);
         }
@@ -112,7 +117,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const syncData = () => {
-    // Handled by onSnapshot
+    // Handled by onSnapshot real-time sync
   };
 
   const setCurrentUser = (user: User | null) => {

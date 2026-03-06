@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, Suspense, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAppContext } from "@/lib/context";
 import { dbService } from "@/lib/db";
@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Gamepad2, Lock, Mail, User as UserIcon, AlertTriangle } from "lucide-react";
+import { Gamepad2, Lock, Mail, User as UserIcon, AlertTriangle, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 function AuthContent() {
@@ -29,14 +29,23 @@ function AuthContent() {
   const [password, setPassword] = useState('');
 
   const isFirebaseConfigured = () => {
-    // Basic check for placeholder values
     const config = (db as any)._app?.options;
     return config && config.apiKey && !config.apiKey.includes("YOUR_API_KEY");
   };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isFirebaseConfigured() && email !== 'admin@rizer.store') {
+    
+    // Hardcoded Admin Bypass works even without Firebase for initial setup
+    if (email === 'admin@rizer.store' && password === '090102030405') {
+      const adminUser = { id: 'admin-id', username: 'Admin', email: 'admin@rizer.store', balance: 999999, role: 'admin' as const };
+      setCurrentUser(adminUser);
+      toast({ title: "Admin Access Granted", description: "Redirecting to Dashboard..." });
+      router.push('/admin/dashboard');
+      return;
+    }
+
+    if (!isFirebaseConfigured()) {
       toast({ 
         title: "Configuration Required", 
         description: "Firebase is not configured yet. Please update src/lib/firebase.ts with your credentials.", 
@@ -48,33 +57,33 @@ function AuthContent() {
     setIsLoading(true);
     
     try {
-      // Hardcoded Admin Bypass
-      if (email === 'admin@rizer.store' && password === '090102030405') {
-        const adminUser = { id: 'admin-id', username: 'Admin', email: 'admin@rizer.store', balance: 999999, role: 'admin' as const };
-        setCurrentUser(adminUser);
-        toast({ title: "Admin Access Granted", description: "Redirecting to Dashboard..." });
-        router.push('/admin/dashboard');
-        return;
+      const usersRef = collection(db, "users");
+      // Search by email first
+      const qEmail = query(usersRef, where("email", "==", email), where("password", "==", password));
+      const snapEmail = await getDocs(qEmail);
+      
+      let userDoc = snapEmail.empty ? null : snapEmail.docs[0];
+
+      // If not found by email, try searching by username
+      if (!userDoc) {
+        const qUser = query(usersRef, where("username", "==", email), where("password", "==", password));
+        const snapUser = await getDocs(qUser);
+        if (!snapUser.empty) {
+          userDoc = snapUser.docs[0];
+        }
       }
 
-      const usersRef = collection(db, "users");
-      const q = query(usersRef, where("email", "==", email), where("password", "==", password));
-      const qAlt = query(usersRef, where("username", "==", email), where("password", "==", password));
-      
-      const [snap, snapAlt] = await Promise.all([getDocs(q), getDocs(qAlt)]);
-      const finalSnap = !snap.empty ? snap : snapAlt;
-
-      if (!finalSnap.empty) {
-        const user = finalSnap.docs[0].data() as any;
+      if (userDoc) {
+        const user = userDoc.data() as any;
         setCurrentUser(user);
         toast({ title: "Login Successful", description: `Welcome back, ${user.username}!` });
         router.push('/');
       } else {
-        toast({ title: "Invalid Credentials", description: "Please check your email/username and password.", variant: "destructive" });
+        toast({ title: "Invalid Credentials", description: "Check your email/username and password.", variant: "destructive" });
       }
     } catch (error: any) {
       console.error("Login Error:", error);
-      toast({ title: "Login Failed", description: error.message || "An unexpected error occurred.", variant: "destructive" });
+      toast({ title: "Login Failed", description: error.message || "Connection error to database.", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
@@ -121,7 +130,7 @@ function AuthContent() {
         id: userId,
         username,
         email,
-        password, // In a real app, never store plain text passwords
+        password,
         balance: 0,
         role: 'user' as const
       };
@@ -133,7 +142,7 @@ function AuthContent() {
       router.push('/');
     } catch (error: any) {
       console.error("Signup Error:", error);
-      toast({ title: "Signup Error", description: "Could not connect to the database. Check your configuration.", variant: "destructive" });
+      toast({ title: "Signup Error", description: error.message || "Database connection failed.", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
@@ -147,7 +156,7 @@ function AuthContent() {
             <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
             <div className="text-xs">
               <p className="font-bold mb-1">Firebase Configuration Missing</p>
-              <p>You need to update <strong>src/lib/firebase.ts</strong> with your real project keys for this page to work.</p>
+              <p>You need to update <strong>src/lib/firebase.ts</strong> with your real project keys for database features to work.</p>
             </div>
           </div>
         )}
@@ -202,6 +211,7 @@ function AuthContent() {
                     </div>
                   </div>
                   <Button type="submit" className="w-full font-bold h-11 neon-glow" disabled={isLoading}>
+                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                     {isLoading ? "Authenticating..." : "Login to Store"}
                   </Button>
                 </form>
@@ -257,6 +267,7 @@ function AuthContent() {
                     </div>
                   </div>
                   <Button type="submit" className="w-full font-bold h-11 neon-glow" disabled={isLoading}>
+                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                     {isLoading ? "Creating Account..." : "Create Account"}
                   </Button>
                 </form>
@@ -276,7 +287,10 @@ function AuthContent() {
 
 export default function AuthPage() {
   return (
-    <Suspense fallback={<div className="container p-20 text-center">Loading Authentication...</div>}>
+    <Suspense fallback={<div className="container p-20 text-center flex flex-col items-center gap-4">
+      <Loader2 className="h-10 w-10 animate-spin text-primary" />
+      <p>Loading Authentication...</p>
+    </div>}>
       <AuthContent />
     </Suspense>
   );
