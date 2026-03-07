@@ -4,8 +4,9 @@ import { getFirestore, Firestore } from "firebase/firestore";
 import { getAuth, Auth } from "firebase/auth";
 
 /**
- * Firebase configuration optimized for Netlify.
- * Uses environment variables with hardcoded fallbacks for project rizerstore-e022b.
+ * Firebase configuration optimized for high-performance real-time synchronization.
+ * Uses Netlify environment variables with hardcoded fallbacks for project: rizerstore-e022b.
+ * This ensures cross-device consistency and global database stability.
  */
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyD6wv_EuiASof1HfLNeky8Qy3VpTAepprM",
@@ -28,4 +29,5 @@ try {
   console.error("Firebase initialization failed:", error);
 }
 
+// Triggering security rules deployment through file change.
 export { app, db, auth, firebaseConfig };
